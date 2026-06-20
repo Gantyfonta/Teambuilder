@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokémon Teambuilder Prototype</title>
+    <title>Pokémon Teambuilder Prototype v2</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -12,16 +12,16 @@
             padding: 20px;
         }
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
         }
         h1 { text-align: center; }
 
         /* The 6 Team Slots */
         .team-container {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
             margin-bottom: 30px;
             background: #fff;
             padding: 20px;
@@ -29,8 +29,8 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
         .slot {
-            width: 100px;
-            height: 100px;
+            position: relative;
+            min-height: 140px;
             border: 2px dashed #cbd5e1;
             border-radius: 8px;
             display: flex;
@@ -38,15 +38,59 @@
             align-items: center;
             justify-content: center;
             background: #f8fafc;
+            padding: 10px;
+        }
+        .slot.filled {
+            border: 2px solid #3b82f6;
+            background: #eff6ff;
+        }
+        .remove-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
             cursor: pointer;
-            font-size: 0.9em;
-            transition: all 0.2s;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .slot:hover {
-            background-color: #fee2e2;
-            border-color: #ef4444;
+        .remove-btn:hover { background: #dc2626; }
+        
+        .moves-container {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            width: 100%;
+            margin-top: 10px;
         }
-        .slot span { margin-top: 5px; font-weight: bold; }
+        select {
+            padding: 4px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-size: 0.85em;
+        }
+
+        /* Search Bar */
+        .search-container {
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #search-bar {
+            width: 100%;
+            max-width: 400px;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 1em;
+        }
 
         /* The Available Roster */
         .roster {
@@ -76,58 +120,89 @@
 <body>
 
 <div class="container">
-    <h1>⚔️ Teambuilder</h1>
+    <h1>⚔️ Teambuilder v2</h1>
     
     <div class="team-container" id="team-slots">
         </div>
 
-    <h3>Available Pokémon</h3>
+    <div class="search-container">
+        <h3>Available Pokémon</h3>
+        <input type="text" id="search-bar" placeholder="Search Pokémon..." onkeyup="handleSearch()">
+    </div>
+    
     <div class="roster" id="roster">
         </div>
 </div>
 
 <script>
-    // 1. Our "Database" (You would eventually expand this or use an API like PokeAPI)
+    // 1. Upgraded Database (Now with movepools)
     const pokemonDatabase = [
-        { id: 1, name: "Bulbasaur", type: "Grass/Poison", emoji: "🌱" },
-        { id: 4, name: "Charmander", type: "Fire", emoji: "🔥" },
-        { id: 7, name: "Squirtle", type: "Water", emoji: "💧" },
-        { id: 25, name: "Pikachu", type: "Electric", emoji: "⚡" },
-        { id: 94, name: "Gengar", type: "Ghost/Poison", emoji: "👻" },
-        { id: 143, name: "Snorlax", type: "Normal", emoji: "💤" },
-        { id: 149, name: "Dragonite", type: "Dragon/Flying", emoji: "🐉" },
-        { id: 212, name: "Scizor", type: "Bug/Steel", emoji: "✂️" }
+        { id: 1, name: "Bulbasaur", type: "Grass/Poison", emoji: "🌱", learnset: ["Tackle", "Vine Whip", "Leech Seed", "Sludge Bomb", "Synthesis"] },
+        { id: 4, name: "Charmander", type: "Fire", emoji: "🔥", learnset: ["Scratch", "Ember", "Flamethrower", "Dragon Breath", "Smokescreen"] },
+        { id: 7, name: "Squirtle", type: "Water", emoji: "💧", learnset: ["Tackle", "Water Gun", "Surf", "Ice Beam", "Protect"] },
+        { id: 25, name: "Pikachu", type: "Electric", emoji: "⚡", learnset: ["Thunder Shock", "Quick Attack", "Thunderbolt", "Volt Tackle", "Iron Tail"] },
+        { id: 94, name: "Gengar", type: "Ghost/Poison", emoji: "👻", learnset: ["Shadow Ball", "Sludge Wave", "Focus Blast", "Destiny Bond", "Trick"] },
+        { id: 143, name: "Snorlax", type: "Normal", emoji: "💤", learnset: ["Body Slam", "Rest", "Sleep Talk", "Earthquake", "Crunch"] },
+        { id: 149, name: "Dragonite", type: "Dragon/Flying", emoji: "🐉", learnset: ["Dragon Dance", "Outrage", "Extreme Speed", "Fire Punch", "Roost"] },
+        { id: 212, name: "Scizor", type: "Bug/Steel", emoji: "✂️", learnset: ["Bullet Punch", "U-turn", "Swords Dance", "Roost", "Knock Off"] }
     ];
 
-    // 2. State Management (Keep track of the user's team)
-    let currentTeam = [null, null, null, null, null, null]; // 6 empty slots
+    // 2. Upgraded State Management (Now stores the Pokémon AND its 4 selected moves)
+    let currentTeam = [null, null, null, null, null, null]; 
 
     const teamContainer = document.getElementById('team-slots');
     const rosterContainer = document.getElementById('roster');
 
-    // 3. Render the 6 Team Slots
+    // 3. Render the Team Slots
     function renderTeam() {
         teamContainer.innerHTML = '';
-        currentTeam.forEach((pokemon, index) => {
-            const slot = document.createElement('div');
-            slot.className = 'slot';
+        currentTeam.forEach((slotData, slotIndex) => {
+            const slotEl = document.createElement('div');
             
-            if (pokemon) {
+            if (slotData) {
                 // Slot is full
-                slot.innerHTML = `<div style="font-size: 2em;">${pokemon.emoji}</div><span>${pokemon.name}</span>`;
-                slot.title = "Click to remove";
-                slot.onclick = () => removePokemon(index);
+                slotEl.className = 'slot filled';
+                const p = slotData.pokemon;
+                
+                // Build the 4 move dropdowns
+                let moveSelectsHTML = '';
+                for(let i = 0; i < 4; i++) {
+                    let optionsHTML = `<option value="">Select Move ${i+1}</option>`;
+                    p.learnset.forEach(move => {
+                        const isSelected = slotData.moves[i] === move ? 'selected' : '';
+                        optionsHTML += `<option value="${move}" ${isSelected}>${move}</option>`;
+                    });
+                    
+                    moveSelectsHTML += `<select onchange="updateMove(${slotIndex}, ${i}, this.value)">${optionsHTML}</select>`;
+                }
+
+                slotEl.innerHTML = `
+                    <button class="remove-btn" onclick="removePokemon(${slotIndex})" title="Remove Pokémon">X</button>
+                    <div style="font-size: 2em; margin-bottom: 5px;">${p.emoji}</div>
+                    <strong>${p.name}</strong>
+                    <div class="moves-container">
+                        ${moveSelectsHTML}
+                    </div>
+                `;
             } else {
                 // Slot is empty
-                slot.innerHTML = `<span style="color: #94a3b8;">Empty</span>`;
+                slotEl.className = 'slot';
+                slotEl.innerHTML = `<span style="color: #94a3b8;">Empty Slot</span>`;
             }
-            teamContainer.appendChild(slot);
+            teamContainer.appendChild(slotEl);
         });
     }
 
-    // 4. Render the available Pokémon list
-    function renderRoster() {
-        pokemonDatabase.forEach(pokemon => {
+    // 4. Render the available Pokémon list (with optional filtering)
+    function renderRoster(searchQuery = '') {
+        rosterContainer.innerHTML = ''; // Clear current roster
+        
+        const filteredPokemon = pokemonDatabase.filter(p => 
+            p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+            p.type.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+        filteredPokemon.forEach(pokemon => {
             const card = document.createElement('div');
             card.className = 'pokemon-card';
             card.innerHTML = `
@@ -140,18 +215,34 @@
         });
     }
 
-    // 5. Logic: Add to the first empty slot
+    // 5. Logic: Handle Search Input
+    function handleSearch() {
+        const query = document.getElementById('search-bar').value;
+        renderRoster(query);
+    }
+
+    // 6. Logic: Add to team (initializes with 4 empty moves)
     function addPokemon(pokemon) {
-        const emptyIndex = currentTeam.indexOf(null);
+        const emptyIndex = currentTeam.findIndex(slot => slot === null);
         if (emptyIndex !== -1) {
-            currentTeam[emptyIndex] = pokemon;
+            currentTeam[emptyIndex] = {
+                pokemon: pokemon,
+                moves: ["", "", "", ""] // 4 empty move slots
+            };
             renderTeam();
         } else {
             alert("Your team is full! Remove a Pokémon first.");
         }
     }
 
-    // 6. Logic: Remove from team
+    // 7. Logic: Update a specific move
+    function updateMove(slotIndex, moveIndex, moveName) {
+        currentTeam[slotIndex].moves[moveIndex] = moveName;
+        // We don't necessarily need to re-render the whole team just for picking a move,
+        // but it keeps the state perfectly synced with the UI.
+    }
+
+    // 8. Logic: Remove from team
     function removePokemon(index) {
         currentTeam[index] = null;
         renderTeam();
@@ -163,4 +254,4 @@
 </script>
 
 </body>
-  </html>
+</html>

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon Teambuilder Prototype</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 { text-align: center; }
+
+        /* The 6 Team Slots */
+        .team-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 30px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .slot {
+            width: 100px;
+            height: 100px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #f8fafc;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+        .slot:hover {
+            background-color: #fee2e2;
+            border-color: #ef4444;
+        }
+        .slot span { margin-top: 5px; font-weight: bold; }
+
+        /* The Available Roster */
+        .roster {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 15px;
+        }
+        .pokemon-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .pokemon-card:hover {
+            transform: translateY(-3px);
+            border: 2px solid #3b82f6;
+        }
+        .type {
+            font-size: 0.8em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>⚔️ Teambuilder</h1>
+    
+    <div class="team-container" id="team-slots">
+        </div>
+
+    <h3>Available Pokémon</h3>
+    <div class="roster" id="roster">
+        </div>
+</div>
+
+<script>
+    // 1. Our "Database" (You would eventually expand this or use an API like PokeAPI)
+    const pokemonDatabase = [
+        { id: 1, name: "Bulbasaur", type: "Grass/Poison", emoji: "🌱" },
+        { id: 4, name: "Charmander", type: "Fire", emoji: "🔥" },
+        { id: 7, name: "Squirtle", type: "Water", emoji: "💧" },
+        { id: 25, name: "Pikachu", type: "Electric", emoji: "⚡" },
+        { id: 94, name: "Gengar", type: "Ghost/Poison", emoji: "👻" },
+        { id: 143, name: "Snorlax", type: "Normal", emoji: "💤" },
+        { id: 149, name: "Dragonite", type: "Dragon/Flying", emoji: "🐉" },
+        { id: 212, name: "Scizor", type: "Bug/Steel", emoji: "✂️" }
+    ];
+
+    // 2. State Management (Keep track of the user's team)
+    let currentTeam = [null, null, null, null, null, null]; // 6 empty slots
+
+    const teamContainer = document.getElementById('team-slots');
+    const rosterContainer = document.getElementById('roster');
+
+    // 3. Render the 6 Team Slots
+    function renderTeam() {
+        teamContainer.innerHTML = '';
+        currentTeam.forEach((pokemon, index) => {
+            const slot = document.createElement('div');
+            slot.className = 'slot';
+            
+            if (pokemon) {
+                // Slot is full
+                slot.innerHTML = `<div style="font-size: 2em;">${pokemon.emoji}</div><span>${pokemon.name}</span>`;
+                slot.title = "Click to remove";
+                slot.onclick = () => removePokemon(index);
+            } else {
+                // Slot is empty
+                slot.innerHTML = `<span style="color: #94a3b8;">Empty</span>`;
+            }
+            teamContainer.appendChild(slot);
+        });
+    }
+
+    // 4. Render the available Pokémon list
+    function renderRoster() {
+        pokemonDatabase.forEach(pokemon => {
+            const card = document.createElement('div');
+            card.className = 'pokemon-card';
+            card.innerHTML = `
+                <div style="font-size: 2.5em;">${pokemon.emoji}</div>
+                <strong>${pokemon.name}</strong>
+                <div class="type">${pokemon.type}</div>
+            `;
+            card.onclick = () => addPokemon(pokemon);
+            rosterContainer.appendChild(card);
+        });
+    }
+
+    // 5. Logic: Add to the first empty slot
+    function addPokemon(pokemon) {
+        const emptyIndex = currentTeam.indexOf(null);
+        if (emptyIndex !== -1) {
+            currentTeam[emptyIndex] = pokemon;
+            renderTeam();
+        } else {
+            alert("Your team is full! Remove a Pokémon first.");
+        }
+    }
+
+    // 6. Logic: Remove from team
+    function removePokemon(index) {
+        currentTeam[index] = null;
+        renderTeam();
+    }
+
+    // Initialize the app
+    renderTeam();
+    renderRoster();
+</script>
+
+</body>
+  </html>

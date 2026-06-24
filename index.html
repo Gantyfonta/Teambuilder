@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokémon Teambuilder Prototype v3</title>
+    <title>Pokémon Teambuilder Prototype v4</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #1e1e1e;
-            color: #e0e0e0;
+            background-color: #f3f4f6; /* Clean light gray background */
+            color: #1f2937; /* Dark text for readability */
             padding: 20px;
         }
         .container {
             max-width: 900px;
             margin: 0 auto;
         }
-        h1 { text-align: center; color: #fff; }
+        h1 { text-align: center; color: #111827; }
 
         /* The 6 Team Slots */
         .team-container {
@@ -23,26 +23,26 @@
             grid-template-columns: repeat(3, 1fr);
             gap: 15px;
             margin-bottom: 30px;
-            background: #2d2d2d;
+            background: #ffffff; /* White container */
             padding: 20px;
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); /* Soft shadow */
         }
         .slot {
             position: relative;
-            min-height: 180px;
-            border: 2px dashed #555;
+            min-height: 220px; /* Slightly taller to fit abilities */
+            border: 2px dashed #cbd5e1;
             border-radius: 8px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: #333;
+            background: #f8fafc;
             padding: 15px;
         }
         .slot.filled {
             border: 2px solid #3b82f6;
-            background: #3a3a3a;
+            background: #eff6ff; /* Very faint blue tint for filled slots */
         }
         .remove-btn {
             position: absolute;
@@ -59,6 +59,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: background 0.2s;
         }
         .remove-btn:hover { background: #dc2626; }
         
@@ -69,7 +70,7 @@
             image-rendering: pixelated; 
         }
 
-        .moves-container {
+        .dropdowns-container {
             display: flex;
             flex-direction: column;
             gap: 5px;
@@ -79,10 +80,16 @@
         select {
             padding: 4px;
             border-radius: 4px;
-            border: 1px solid #555;
-            background: #222;
-            color: #fff;
+            border: 1px solid #94a3b8;
+            background: #ffffff;
+            color: #334155;
             font-size: 0.85em;
+        }
+        
+        .ability-select {
+            font-weight: bold;
+            border-color: #64748b;
+            margin-bottom: 5px; /* Separation between ability and moves */
         }
 
         /* Search Bar */
@@ -97,9 +104,9 @@
             max-width: 400px;
             padding: 10px;
             border-radius: 8px;
-            border: 1px solid #555;
-            background: #222;
-            color: #fff;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #1f2937;
             font-size: 1em;
         }
 
@@ -110,11 +117,11 @@
             gap: 15px;
         }
         .pokemon-card {
-            background: #2d2d2d;
+            background: #ffffff;
             padding: 15px;
             border-radius: 8px;
             text-align: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             cursor: pointer;
             transition: transform 0.1s;
         }
@@ -124,14 +131,14 @@
         }
         .type {
             font-size: 0.8em;
-            color: #aaa;
+            color: #64748b;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>⚔️ Teambuilder v3</h1>
+    <h1>⚔️ Teambuilder v4</h1>
     
     <div class="team-container" id="team-slots">
         </div>
@@ -146,7 +153,7 @@
 </div>
 
 <script>
-    // 1. New Move Database 
+    // 1. Move Database 
     const moveDatabase = {
         "Tackle": { type: "Normal", category: "Physical", power: 40, accuracy: 100 },
         "Vine Whip": { type: "Grass", category: "Physical", power: 45, accuracy: 100 },
@@ -160,25 +167,25 @@
         "Bullet Punch": { type: "Steel", category: "Physical", power: 40, accuracy: 100 }
     };
 
-    // 2. Upgraded Pokemon Database (Featuring Chewer!)
+    // 2. Upgraded Pokemon Database (Now with Abilities!)
     const pokemonDatabase = [
-        { id: 1, name: "Chewer", type: "Ground", sprite: "sprites/chewer.png", emoji: "🌍", learnset: ["Tackle", "Vine Whip", "Sludge Bomb"] },
-        { id: 4, name: "Charmander", type: "Fire", sprite: "sprites/charmander.png", emoji: "🔥", learnset: ["Tackle", "Flamethrower"] },
-        { id: 7, name: "Squirtle", type: "Water", sprite: "sprites/squirtle.png", emoji: "💧", learnset: ["Tackle", "Water Gun"] },
-        { id: 25, name: "Pikachu", type: "Electric", sprite: "sprites/pikachu.png", emoji: "⚡", learnset: ["Tackle", "Thunderbolt"] },
-        { id: 94, name: "Gengar", type: "Ghost/Poison", sprite: "sprites/gengar.png", emoji: "👻", learnset: ["Shadow Ball", "Sludge Bomb"] },
-        { id: 143, name: "Snorlax", type: "Normal", sprite: "sprites/snorlax.png", emoji: "💤", learnset: ["Tackle", "Body Slam"] },
-        { id: 149, name: "Dragonite", type: "Dragon/Flying", sprite: "sprites/dragonite.png", emoji: "🐉", learnset: ["Tackle", "Outrage"] },
-        { id: 212, name: "Scizor", type: "Bug/Steel", sprite: "sprites/scizor.png", emoji: "✂️", learnset: ["Tackle", "Bullet Punch"] }
+        { id: 1, name: "Chewer", type: "Ground", sprite: "sprites/chewer.png", emoji: "🌍", abilities: ["Sand Veil", "Arena Trap"], learnset: ["Tackle", "Vine Whip", "Sludge Bomb"] },
+        { id: 4, name: "Charmander", type: "Fire", sprite: "sprites/charmander.png", emoji: "🔥", abilities: ["Blaze", "Solar Power"], learnset: ["Tackle", "Flamethrower"] },
+        { id: 7, name: "Squirtle", type: "Water", sprite: "sprites/squirtle.png", emoji: "💧", abilities: ["Torrent", "Rain Dish"], learnset: ["Tackle", "Water Gun"] },
+        { id: 25, name: "Pikachu", type: "Electric", sprite: "sprites/pikachu.png", emoji: "⚡", abilities: ["Static", "Lightning Rod"], learnset: ["Tackle", "Thunderbolt"] },
+        { id: 94, name: "Gengar", type: "Ghost/Poison", sprite: "sprites/gengar.png", emoji: "👻", abilities: ["Cursed Body"], learnset: ["Shadow Ball", "Sludge Bomb"] },
+        { id: 143, name: "Snorlax", type: "Normal", sprite: "sprites/snorlax.png", emoji: "💤", abilities: ["Immunity", "Thick Fat", "Gluttony"], learnset: ["Tackle", "Body Slam"] },
+        { id: 149, name: "Dragonite", type: "Dragon/Flying", sprite: "sprites/dragonite.png", emoji: "🐉", abilities: ["Inner Focus", "Multiscale"], learnset: ["Tackle", "Outrage"] },
+        { id: 212, name: "Scizor", type: "Bug/Steel", sprite: "sprites/scizor.png", emoji: "✂️", abilities: ["Swarm", "Technician", "Light Metal"], learnset: ["Tackle", "Bullet Punch"] }
     ];
 
-    // 3. State Management
+    // 3. State Management (Now tracks the selected ability)
     let currentTeam = [null, null, null, null, null, null]; 
 
     const teamContainer = document.getElementById('team-slots');
     const rosterContainer = document.getElementById('roster');
 
-    // 4. Render the Team Slots (This is where your code got cut off!)
+    // 4. Render the Team Slots
     function renderTeam() {
         teamContainer.innerHTML = '';
         currentTeam.forEach((slotData, slotIndex) => {
@@ -188,17 +195,22 @@
                 slotEl.className = 'slot filled';
                 const p = slotData.pokemon;
                 
+                // Build the Ability dropdown
+                let abilityOptionsHTML = `<option value="">Select Ability</option>`;
+                p.abilities.forEach(ability => {
+                    const isSelected = slotData.ability === ability ? 'selected' : '';
+                    abilityOptionsHTML += `<option value="${ability}" ${isSelected}>${ability}</option>`;
+                });
+                const abilitySelectHTML = `<select class="ability-select" onchange="updateAbility(${slotIndex}, this.value)">${abilityOptionsHTML}</select>`;
+
                 // Build the 4 move dropdowns
                 let moveSelectsHTML = '';
                 for(let i = 0; i < 4; i++) {
                     let optionsHTML = `<option value="">Select Move ${i+1}</option>`;
                     p.learnset.forEach(moveName => {
                         const isSelected = slotData.moves[i] === moveName ? 'selected' : '';
-                        
-                        // Look up move power
                         const moveInfo = moveDatabase[moveName];
                         const powerText = moveInfo && moveInfo.power ? ` (BP: ${moveInfo.power})` : '';
-                        
                         optionsHTML += `<option value="${moveName}" ${isSelected}>${moveName}${powerText}</option>`;
                     });
                     
@@ -209,13 +221,14 @@
                     <button class="remove-btn" onclick="removePokemon(${slotIndex})" title="Remove Pokémon">X</button>
                     <img src="${p.sprite}" alt="${p.name}" class="sprite-img" onerror="this.outerHTML='<div style=\\'font-size: 3em; margin-bottom: 10px;\\'>${p.emoji}</div>'">
                     <strong>${p.name}</strong>
-                    <div class="moves-container">
+                    <div class="dropdowns-container">
+                        ${abilitySelectHTML}
                         ${moveSelectsHTML}
                     </div>
                 `;
             } else {
                 slotEl.className = 'slot';
-                slotEl.innerHTML = `<span style="color: #666;">Empty Slot</span>`;
+                slotEl.innerHTML = `<span style="color: #94a3b8;">Empty Slot</span>`;
             }
             teamContainer.appendChild(slotEl);
         });
@@ -250,12 +263,13 @@
         renderRoster(query);
     }
 
-    // 7. Logic: Add to team
+    // 7. Logic: Add to team (Now initializes with an empty ability string)
     function addPokemon(pokemon) {
         const emptyIndex = currentTeam.findIndex(slot => slot === null);
         if (emptyIndex !== -1) {
             currentTeam[emptyIndex] = {
                 pokemon: pokemon,
+                ability: "", // Start with no ability selected
                 moves: ["", "", "", ""] 
             };
             renderTeam();
@@ -264,12 +278,17 @@
         }
     }
 
-    // 8. Logic: Update a specific move
+    // 8. Logic: Update a specific ability
+    function updateAbility(slotIndex, abilityName) {
+        currentTeam[slotIndex].ability = abilityName;
+    }
+
+    // 9. Logic: Update a specific move
     function updateMove(slotIndex, moveIndex, moveName) {
         currentTeam[slotIndex].moves[moveIndex] = moveName;
     }
 
-    // 9. Logic: Remove from team
+    // 10. Logic: Remove from team
     function removePokemon(index) {
         currentTeam[index] = null;
         renderTeam();

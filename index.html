@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #1e1e1e; /* Giving it a darker, Showdown-esque vibe */
+            background-color: #1e1e1e;
             color: #e0e0e0;
             padding: 20px;
         }
@@ -63,10 +63,10 @@
         .remove-btn:hover { background: #dc2626; }
         
         .sprite-img {
-            width: 96px; /* Standard Gen 4/5 sprite size */
+            width: 96px; 
             height: 96px;
             object-fit: contain;
-            image-rendering: pixelated; /* Keeps pixel art crisp */
+            image-rendering: pixelated; 
         }
 
         .moves-container {
@@ -146,7 +146,7 @@
 </div>
 
 <script>
-    // 1. New Move Database (Define power, accuracy, types, etc. here)
+    // 1. New Move Database 
     const moveDatabase = {
         "Tackle": { type: "Normal", category: "Physical", power: 40, accuracy: 100 },
         "Vine Whip": { type: "Grass", category: "Physical", power: 45, accuracy: 100 },
@@ -160,8 +160,7 @@
         "Bullet Punch": { type: "Steel", category: "Physical", power: 40, accuracy: 100 }
     };
 
-    // 2. Upgraded Pokemon Database (Now with sprite file paths)
-    // Note: We keep the emoji as a fallback just in case the image fails to load.
+    // 2. Upgraded Pokemon Database (Featuring Chewer!)
     const pokemonDatabase = [
         { id: 1, name: "Chewer", type: "Ground", sprite: "sprites/chewer.png", emoji: "🌍", learnset: ["Tackle", "Vine Whip", "Sludge Bomb"] },
         { id: 4, name: "Charmander", type: "Fire", sprite: "sprites/charmander.png", emoji: "🔥", learnset: ["Tackle", "Flamethrower"] },
@@ -179,7 +178,7 @@
     const teamContainer = document.getElementById('team-slots');
     const rosterContainer = document.getElementById('roster');
 
-    // 4. Render the Team Slots
+    // 4. Render the Team Slots (This is where your code got cut off!)
     function renderTeam() {
         teamContainer.innerHTML = '';
         currentTeam.forEach((slotData, slotIndex) => {
@@ -196,7 +195,7 @@
                     p.learnset.forEach(moveName => {
                         const isSelected = slotData.moves[i] === moveName ? 'selected' : '';
                         
-                        // We can look up the move data here to display info like Power!
+                        // Look up move power
                         const moveInfo = moveDatabase[moveName];
                         const powerText = moveInfo && moveInfo.power ? ` (BP: ${moveInfo.power})` : '';
                         
@@ -206,9 +205,80 @@
                     moveSelectsHTML += `<select onchange="updateMove(${slotIndex}, ${i}, this.value)">${optionsHTML}</select>`;
                 }
 
-                // If the local sprite file is missing, the 'onerror' event falls back to the emoji!
                 slotEl.innerHTML = `
                     <button class="remove-btn" onclick="removePokemon(${slotIndex})" title="Remove Pokémon">X</button>
                     <img src="${p.sprite}" alt="${p.name}" class="sprite-img" onerror="this.outerHTML='<div style=\\'font-size: 3em; margin-bottom: 10px;\\'>${p.emoji}</div>'">
                     <strong>${p.name}</strong>
                     <div class="moves-container">
+                        ${moveSelectsHTML}
+                    </div>
+                `;
+            } else {
+                slotEl.className = 'slot';
+                slotEl.innerHTML = `<span style="color: #666;">Empty Slot</span>`;
+            }
+            teamContainer.appendChild(slotEl);
+        });
+    }
+
+    // 5. Render the available Pokémon list
+    function renderRoster(searchQuery = '') {
+        rosterContainer.innerHTML = ''; 
+        
+        const filteredPokemon = pokemonDatabase.filter(p => 
+            p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+            p.type.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+        filteredPokemon.forEach(pokemon => {
+            const card = document.createElement('div');
+            card.className = 'pokemon-card';
+            card.innerHTML = `
+                <img src="${pokemon.sprite}" alt="${pokemon.name}" class="sprite-img" onerror="this.outerHTML='<div style=\\'font-size: 3em; margin-bottom: 10px;\\'>${pokemon.emoji}</div>'">
+                <br>
+                <strong>${pokemon.name}</strong>
+                <div class="type">${pokemon.type}</div>
+            `;
+            card.onclick = () => addPokemon(pokemon);
+            rosterContainer.appendChild(card);
+        });
+    }
+
+    // 6. Logic: Handle Search Input
+    function handleSearch() {
+        const query = document.getElementById('search-bar').value;
+        renderRoster(query);
+    }
+
+    // 7. Logic: Add to team
+    function addPokemon(pokemon) {
+        const emptyIndex = currentTeam.findIndex(slot => slot === null);
+        if (emptyIndex !== -1) {
+            currentTeam[emptyIndex] = {
+                pokemon: pokemon,
+                moves: ["", "", "", ""] 
+            };
+            renderTeam();
+        } else {
+            alert("Your team is full! Remove a Pokémon first.");
+        }
+    }
+
+    // 8. Logic: Update a specific move
+    function updateMove(slotIndex, moveIndex, moveName) {
+        currentTeam[slotIndex].moves[moveIndex] = moveName;
+    }
+
+    // 9. Logic: Remove from team
+    function removePokemon(index) {
+        currentTeam[index] = null;
+        renderTeam();
+    }
+
+    // Initialize the app
+    renderTeam();
+    renderRoster();
+</script>
+
+</body>
+</html>

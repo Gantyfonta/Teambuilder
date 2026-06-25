@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Battle Arena</title>
+    <title>Multiplayer Battle Arena</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -31,18 +31,46 @@
         #start-screen {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(15, 23, 42, 0.9);
+            background: rgba(15, 23, 42, 0.95);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             z-index: 100;
         }
-        
+
+        .setup-box {
+            background: #1e293b;
+            padding: 25px;
+            border-radius: 10px;
+            border: 2px solid #475569;
+            width: 320px;
+            text-align: center;
+        }
+
+        .input-field {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background: #0f172a;
+            color: white;
+            font-size: 1em;
+            text-align: center;
+        }
+
+        .radio-group {
+            display: flex;
+            justify-content: space-around;
+            margin: 15px 0;
+        }
+
         .start-btn {
-            padding: 15px 30px;
-            font-size: 1.5em;
-            background: #ef4444;
+            width: 100%;
+            padding: 12px;
+            font-size: 1.2em;
+            background: #22c55e;
             color: white;
             border: none;
             border-radius: 8px;
@@ -50,8 +78,9 @@
             font-weight: bold;
             transition: background 0.2s;
         }
-        .start-btn:hover { background: #dc2626; }
+        .start-btn:hover { background: #16a34a; }
 
+        /* HUD & Sprites */
         .hud {
             background: rgba(255, 255, 255, 0.9);
             color: #333;
@@ -62,6 +91,7 @@
             width: 220px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
+        /* Top Left is Opponent, Bottom Right is Self */
         .opponent-hud { top: 30px; left: 40px; }
         .player-hud { bottom: 160px; right: 40px; }
         
@@ -96,6 +126,7 @@
         .opponent-sprite { top: 60px; right: 100px; }
         .player-sprite { bottom: 160px; left: 100px; transform: scaleX(-1); }
 
+        /* Controls Panel */
         .ui-panel {
             position: absolute;
             bottom: 0;
@@ -109,11 +140,12 @@
         .dialogue-box {
             flex: 1;
             padding: 20px;
-            font-size: 1.2em;
+            font-size: 1.1em;
             color: #1e293b;
             border-right: 2px solid #cbd5e1;
             font-family: monospace;
             white-space: pre-line;
+            overflow-y: auto;
         }
 
         .moves-panel {
@@ -156,36 +188,61 @@
     </audio>
 
     <div id="start-screen">
-        <h1 style="margin-bottom: 20px;">Ready to Battle?</h1>
-        <button class="start-btn" onclick="startBattle()">BATTLE!</button>
+        <div class="setup-box">
+            <h2 style="margin-top: 0;">⚔️ Online Battle Setup</h2>
+            <label>Match Room ID:</label>
+            <input type="text" id="room-input" class="input-field" value="arena1">
+            
+            <label>Select Player Role:</label>
+            <div class="radio-group">
+                <label><input type="radio" name="role" value="p1" checked> Player 1 (Host)</label>
+                <label><input type="radio" name="role" value="p2"> Player 2 (Guest)</label>
+            </div>
+            
+            <button class="start-btn" id="connect-btn">CONNECT & BATTLE</button>
+        </div>
     </div>
 
     <div class="battle-container" id="battle-arena">
         <div class="hud opponent-hud">
-            <strong id="opp-name">Wild Gengar</strong>
+            <strong id="opp-name">Waiting...</strong>
             <div class="hp-bar-container"><div class="hp-bar" id="opp-hp"></div></div>
-            <div class="hp-text" id="opp-hp-text">140 / 140</div>
+            <div class="hp-text" id="opp-hp-text">-- / --</div>
         </div>
-        <img src="sprites/gengar.png" class="sprite opponent-sprite" id="opp-sprite" alt="Opponent">
+        <img src="" class="sprite opponent-sprite" id="opp-sprite" alt="Opponent">
 
         <div class="hud player-hud">
             <strong id="player-name">Loading...</strong>
             <div class="hp-bar-container"><div class="hp-bar" id="player-hp"></div></div>
-            <div class="hp-text" id="player-hp-text">100 / 100</div>
+            <div class="hp-text" id="player-hp-text">-- / --</div>
         </div>
         <img src="" class="sprite player-sprite" id="player-sprite" alt="Player">
 
         <div class="ui-panel">
-            <div class="dialogue-box" id="dialogue">What will your Pokémon do?</div>
+            <div class="dialogue-box" id="dialogue">Connecting to database...</div>
             <div class="moves-panel" id="moves-panel"></div>
         </div>
     </div>
 
-<script>
-    const bgMusic = document.getElementById('battle-music');
-    bgMusic.volume = 0.4;
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    // --- NEW: Type Effectiveness Chart ---
+    // Embedded configuration parameters
+    const firebaseConfig = {
+        apiKey: "AIzaSyBr49eujOYIpnO_ysSBUfxFX3CMPPfkTPg",
+        authDomain: "teambuilder-8563d.firebaseapp.com",
+        projectId: "teambuilder-8563d",
+        storageBucket: "teambuilder-8563d.firebasestorage.app",
+        messagingSenderId: "963597185834",
+        appId: "1:963597185834:web:d7ff620bb07687700b2453",
+        measurementId: "G-9TBZ9FPDPV"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // --- Core Game Data Databases ---
     const typeChart = {
         "Normal": { "Ghost": 0, "Steel": 0.5 },
         "Fire": { "Fire": 0.5, "Water": 0.5, "Grass": 2.0, "Bug": 2.0, "Steel": 2.0, "Dragon": 0.5 },
@@ -215,230 +272,273 @@
         "Bullet Punch": { type: "Steel", power: 40 }
     };
 
-    let playerMon = null;
-    let oppMon = {
-        name: "Wild Gengar",
-        type: "Ghost/Poison", // Added type!
-        sprite: "sprites/gengar.png",
-        stats: { hp: 140, maxHp: 140, atk: 95, def: 60, spe: 110 },
-        moves: ["Shadow Ball", "Sludge Bomb", "Tackle"],
-        isPlayer: false // Added explicit flag for faints
-    };
+    // --- Multiplayer State Variables ---
+    let myRole = "p1";       // "p1" or "p2"
+    let oppRole = "p2";      // Opposite of role
+    let roomId = "arena1";
+    let roomRef = null;
+    let localMonData = null; // Local active loaded slot
+    let currentMatchData = null; 
 
-    function startBattle() {
+    const bgMusic = document.getElementById('battle-music');
+    bgMusic.volume = 0.3;
+
+    // Listen for connection setup click
+    document.getElementById('connect-btn').onclick = function() {
+        roomId = document.getElementById('room-input').value.trim() || "arena1";
+        myRole = document.querySelector('input[name="role"]:checked').value;
+        oppRole = myRole === "p1" ? "p2" : "p1";
+        roomRef = ref(db, 'matches/' + roomId);
+
         document.getElementById('start-screen').style.display = 'none';
         document.getElementById('battle-arena').style.display = 'block';
         bgMusic.play();
-        initializePlayerTeam();
-    }
 
-    function initializePlayerTeam() {
+        setupMultiplayerMatch();
+    };
+
+    // Load active party element from storage
+    function getActiveTeambuilderMon() {
         const savedData = localStorage.getItem('myShowdownTeam');
         if (savedData) {
             try {
                 const team = JSON.parse(savedData);
                 const activeSlot = team.find(slot => slot !== null && slot.pokemon && slot.pokemon.stats);
                 if (activeSlot) {
-                    playerMon = {
+                    return {
                         name: activeSlot.pokemon.name,
-                        type: activeSlot.pokemon.type, // Bring in their type
+                        type: activeSlot.pokemon.type,
                         sprite: activeSlot.pokemon.sprite,
-                        stats: { 
-                            hp: activeSlot.pokemon.stats.hp, 
-                            maxHp: activeSlot.pokemon.stats.hp, 
-                            atk: activeSlot.pokemon.stats.atk, 
-                            def: activeSlot.pokemon.stats.def, 
-                            spe: activeSlot.pokemon.stats.spe 
-                        },
+                        hp: activeSlot.pokemon.stats.hp,
+                        maxHp: activeSlot.pokemon.stats.hp,
+                        atk: activeSlot.pokemon.stats.atk,
+                        def: activeSlot.pokemon.stats.def,
+                        spe: activeSlot.pokemon.stats.spe,
                         moves: activeSlot.moves.filter(m => m !== ""),
-                        isPlayer: true
+                        ready: true
                     };
                 }
-            } catch (e) {
-                console.error("Error reading team:", e);
-            }
+            } catch (e) { console.error(e); }
         }
-
-        if (!playerMon) {
-            playerMon = {
-                name: "Pikachu (Buddy)",
-                type: "Electric",
-                sprite: "sprites/pikachu.png",
-                stats: { hp: 115, maxHp: 115, atk: 55, def: 40, spe: 90 },
-                moves: ["Thunderbolt", "Tackle"],
-                isPlayer: true
-            };
-        }
-
-        document.getElementById('player-name').innerText = playerMon.name;
-        document.getElementById('player-sprite').src = playerMon.sprite;
-        updateHpBars();
-        buildMovePanel();
-        document.getElementById('dialogue').innerText = `Go! ${playerMon.name}!`;
+        // Fallback placeholder if teambuilder data is unpopulated
+        return {
+            name: myRole === "p1" ? "Pikachu" : "Gengar",
+            type: myRole === "p1" ? "Electric" : "Ghost/Poison",
+            sprite: myRole === "p1" ? "sprites/pikachu.png" : "sprites/gengar.png",
+            hp: myRole === "p1" ? 115 : 140,
+            maxHp: myRole === "p1" ? 115 : 140,
+            atk: myRole === "p1" ? 55 : 95,
+            def: myRole === "p1" ? 40 : 60,
+            spe: myRole === "p1" ? 90 : 110,
+            moves: myRole === "p1" ? ["Thunderbolt", "Tackle"] : ["Shadow Ball", "Sludge Bomb"],
+            ready: true
+        };
     }
 
-    function buildMovePanel() {
-        const movesPanel = document.getElementById('moves-panel');
-        movesPanel.innerHTML = ''; 
+    function setupMultiplayerMatch() {
+        localMonData = getActiveTeambuilderMon();
 
+        // If Host, wipe any previous broken rooms and seed new schema structure
+        if (myRole === "p1") {
+            set(roomRef, {
+                turn: 0,
+                lastTurnSummary: "Waiting for Player 2 to join...",
+                actions: { p1Move: "", p2Move: "" },
+                p1: localMonData
+            });
+        } else {
+            // If Guest, inject local mon parameters into current room path
+            update(ref(db, `matches/${roomId}/${myRole}`), localMonData);
+        }
+
+        // Live database updates subscription loop
+        onValue(roomRef, (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
+            currentMatchData = data;
+
+            // Trigger initialization logic once both parties connect
+            if (data.turn === 0 && data.p1 && data.p2) {
+                if (myRole === "p1") {
+                    update(roomRef, {
+                        turn: 1,
+                        lastTurnSummary: "The match has begun!\nWhat will your Pokémon do?"
+                    });
+                }
+                return;
+            }
+
+            if (data.turn > 0) {
+                syncUserInterface(data);
+                evaluateTurnCalculations(data);
+            }
+        });
+    }
+
+    function syncUserInterface(data) {
+        const me = data[myRole];
+        const opp = data[oppRole];
+
+        if (!me || !opp) return;
+
+        // Render Status Data & Text Strings
+        document.getElementById('player-name').innerText = me.name;
+        document.getElementById('player-sprite').src = me.sprite;
+        document.getElementById('player-hp-text').innerText = `${me.hp} / ${me.maxHp}`;
+        const pPct = (me.hp / me.maxHp) * 100;
+        document.getElementById('player-hp').style.width = `${pPct}%`;
+
+        document.getElementById('opp-name').innerText = opp.name;
+        document.getElementById('opp-sprite').src = opp.sprite;
+        document.getElementById('opp-hp-text').innerText = `${opp.hp} / ${opp.maxHp}`;
+        const oPct = (opp.hp / opp.maxHp) * 100;
+        document.getElementById('opp-hp').style.width = `${oPct}%`;
+
+        document.getElementById('dialogue').innerText = data.lastTurnSummary;
+
+        // Death checking loop prior to choice confirmation
+        if (me.hp <= 0 || opp.hp <= 0) {
+            setButtonsDisabled(true);
+            buildEmptyMovePanel();
+            if (me.hp <= 0 && opp.hp <= 0) {
+                document.getElementById('dialogue').innerText += "\n\nIt's a double knockout! Mutual draw!";
+            } else if (me.hp <= 0) {
+                document.getElementById('dialogue').innerText += "\n\nYour Pokémon fainted! You lost!";
+            } else {
+                document.getElementById('dialogue').innerText += `\n\nEnemy ${opp.name} fainted! You win!`;
+            }
+            return;
+        }
+
+        // Lock button layouts conditionally depending on submission parameters
+        const myActionKey = `${myRole}Move`;
+        if (data.actions && data.actions[myActionKey]) {
+            document.getElementById('dialogue').innerText = "Waiting for your opponent to make a move...";
+            setButtonsDisabled(true);
+        } else {
+            buildActiveMovePanel(me.moves);
+        }
+    }
+
+    function buildActiveMovePanel(moveList) {
+        const panel = document.getElementById('moves-panel');
+        panel.innerHTML = '';
         for (let i = 0; i < 4; i++) {
             const btn = document.createElement('button');
             btn.className = 'move-btn';
-            const moveName = playerMon.moves[i];
-            
-            if (moveName) {
-                const mType = moveDatabase[moveName].type;
-                btn.innerHTML = `<div>${moveName}</div><div class="move-type">${mType}</div>`;
-                btn.onclick = () => handleTurnSequence(moveName);
+            const moveName = moveList[i];
+            if (moveName && moveDatabase[moveName]) {
+                const type = moveDatabase[moveName].type;
+                btn.innerHTML = `<div>${moveName}</div><div class="move-type">${type}</div>`;
+                btn.onclick = () => submitMoveChoice(moveName);
             } else {
                 btn.innerText = "---";
                 btn.disabled = true;
             }
-            movesPanel.appendChild(btn);
+            panel.appendChild(btn);
         }
+    }
+
+    function buildEmptyMovePanel() {
+        const panel = document.getElementById('moves-panel');
+        panel.innerHTML = '';
+        for (let i = 0; i < 4; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'move-btn';
+            btn.innerText = "---";
+            btn.disabled = true;
+            panel.appendChild(btn);
+        }
+    }
+
+    function submitMoveChoice(moveName) {
+        setButtonsDisabled(true);
+        const updatePayload = {};
+        updatePayload[`actions/${myRole}Move`] = moveName;
+        update(roomRef, updatePayload);
     }
 
     function setButtonsDisabled(shouldDisable) {
-        const buttons = document.querySelectorAll('.move-btn');
-        buttons.forEach(btn => btn.disabled = shouldDisable);
+        document.querySelectorAll('.move-btn').forEach(b => b.disabled = shouldDisable);
     }
 
-    function updateHpBars() {
-        const playerPct = (playerMon.stats.hp / playerMon.stats.maxHp) * 100;
-        const pBar = document.getElementById('player-hp');
-        pBar.style.width = `${playerPct}%`;
-        pBar.style.background = playerPct < 20 ? '#ef4444' : playerPct < 50 ? '#eab308' : '#22c55e';
-        document.getElementById('player-hp-text').innerText = `${playerMon.stats.hp} / ${playerMon.stats.maxHp}`;
+    // --- Core Mathematics Engine (Host Side Only Evaluates) ---
+    function evaluateTurnCalculations(data) {
+        if (myRole !== "p1") return; // Guest ignores math evaluation loops
+        if (!data.actions || !data.actions.p1Move || !data.actions.p2Move) return;
 
-        const oppPct = (oppMon.stats.hp / oppMon.stats.maxHp) * 100;
-        const oBar = document.getElementById('opp-hp');
-        oBar.style.width = `${oppPct}%`;
-        oBar.style.background = oppPct < 20 ? '#ef4444' : oppPct < 50 ? '#eab308' : '#22c55e';
-        document.getElementById('opp-hp-text').innerText = `${oppMon.stats.hp} / ${oppMon.stats.maxHp}`;
+        let p1 = JSON.parse(JSON.stringify(data.p1));
+        let p2 = JSON.parse(JSON.stringify(data.p2));
+        const m1 = data.actions.p1Move;
+        const m2 = data.actions.p2Move;
+
+        // Speed check calculations to determine initiative sequence
+        let priorityQueue = [];
+        if (p1.spe >= p2.spe) {
+            priorityQueue = [{ attacker: p1, defender: p2, move: m1, role: 'p1' }, { attacker: p2, defender: p1, move: m2, role: 'p2' }];
+        } else {
+            priorityQueue = [{ attacker: p2, defender: p1, move: m2, role: 'p2' }, { attacker: p1, defender: p2, move: m1, role: 'p1' }];
+        }
+
+        let summary = "";
+
+        // Action Loop 1
+        let first = priorityQueue;
+        let res1 = computeDamageImpact(first.attacker, first.defender, first.move);
+        first.defender.hp = Math.max(0, first.defender.hp - res1.damage);
+        summary += `${first.attacker.name} used ${first.move}!\n`;
+        summary += res1.text + `It dealt ${res1.damage} damage.\n\n`;
+
+        // Action Loop 2 (Only fires if defender remains conscious)
+        let second = priorityQueue;
+        if (first.defender.hp > 0) {
+            let res2 = computeDamageImpact(second.attacker, second.defender, second.move);
+            second.defender.hp = Math.max(0, second.defender.hp - res2.damage);
+            summary += `${second.attacker.name} used ${second.move}!\n`;
+            summary += res2.text + `It dealt ${res2.damage} damage.`;
+        } else {
+            summary += `${second.attacker.name} was unable to move!`;
+        }
+
+        // Post-Turn DB update synchronization routine
+        update(roomRef, {
+            p1: p1,
+            p2: p2,
+            actions: { p1Move: "", p2Move: "" },
+            lastTurnSummary: summary.trim(),
+            turn: data.turn + 1
+        });
     }
 
-    // --- Helper Function: Get Type Multiplier ---
-    function getEffectiveness(moveType, defenderTypeString) {
-        const defTypes = defenderTypeString.split('/'); // Splits "Ghost/Poison" into array
-        let multiplier = 1;
-        
-        defTypes.forEach(t => {
+    function getEffectiveness(moveType, targetTypeString) {
+        const types = targetTypeString.split('/');
+        let mult = 1;
+        types.forEach(t => {
             if (typeChart[moveType] && typeChart[moveType][t] !== undefined) {
-                multiplier *= typeChart[moveType][t];
+                mult *= typeChart[moveType][t];
             }
         });
-        return multiplier;
+        return mult;
     }
 
-    // --- Updated Damage Math ---
-    function calculateDamage(attacker, defender, moveName) {
+    function computeDamageImpact(attacker, defender, moveName) {
         const moveData = moveDatabase[moveName];
         if (!moveData) return { damage: 0, text: "" };
 
-        // 1. Base Damage Math
-        const baseDamage = Math.floor((((22 * moveData.power * attacker.stats.atk) / defender.stats.def) / 50) + 2);
-        
-        // 2. Type Effectiveness
+        const base = Math.floor((((22 * moveData.power * attacker.atk) / defender.def) / 50) + 2);
         const typeMult = getEffectiveness(moveData.type, defender.type);
-        
-        // 3. STAB (Same Type Attack Bonus - 1.5x damage if types match)
         const stabMult = attacker.type.includes(moveData.type) ? 1.5 : 1;
+        const roll = (Math.floor(Math.random() * 16) + 85) / 100;
 
-        // 4. Random Roll
-        const randomRoll = (Math.floor(Math.random() * 16) + 85) / 100;
-        
-        const finalDamage = Math.floor(baseDamage * typeMult * stabMult * randomRoll);
-        
-        // Check Immunities
+        const finalDamage = Math.floor(base * typeMult * stabMult * roll);
+
         if (typeMult === 0) return { damage: 0, text: "It had no effect!\n" };
-
-        let effectText = "";
-        if (typeMult > 1) effectText = "It's super effective!\n";
-        if (typeMult < 1) effectText = "It's not very effective...\n";
-
-        return { damage: Math.max(1, finalDamage), text: effectText };
-    }
-
-    function handleTurnSequence(playerMove) {
-        setButtonsDisabled(true); 
-        const dialogue = document.getElementById('dialogue');
-
-        const randomIdx = Math.floor(Math.random() * oppMon.moves.length);
-        const oppMove = oppMon.moves[randomIdx];
-
-        let primaryAttacker, secondaryAttacker;
-        let primaryMove, secondaryMove;
-
-        if (playerMon.stats.spe >= oppMon.stats.spe) {
-            primaryAttacker = playerMon; primaryMove = playerMove;
-            secondaryAttacker = oppMon; secondaryMove = oppMove;
-        } else {
-            primaryAttacker = oppMon; primaryMove = oppMove;
-            secondaryAttacker = playerMon; secondaryMove = playerMove;
-        }
-
-        dialogue.innerText = `${primaryAttacker.name} used ${primaryMove}!`;
         
-        setTimeout(() => {
-            const result1 = calculateDamage(primaryAttacker, secondaryAttacker, primaryMove);
-            secondaryAttacker.stats.hp = Math.max(0, secondaryAttacker.stats.hp - result1.damage);
-            updateHpBars();
-            
-            let resultText1 = `${primaryAttacker.name} used ${primaryMove}!\n`;
-            if (result1.damage === 0) resultText1 += result1.text;
-            else resultText1 += `${result1.text}It dealt ${result1.damage} damage.`;
-            dialogue.innerText = resultText1;
+        let msg = "";
+        if (typeMult > 1) msg = "It's super effective!\n";
+        if (typeMult < 1) msg = "It's not very effective...\n";
 
-            if (secondaryAttacker.stats.hp === 0) {
-                handleFaintState(secondaryAttacker);
-                return; 
-            }
-
-            setTimeout(() => {
-                dialogue.innerText = `${secondaryAttacker.name} used ${secondaryMove}!`;
-
-                setTimeout(() => {
-                    const result2 = calculateDamage(secondaryAttacker, primaryAttacker, secondaryMove);
-                    primaryAttacker.stats.hp = Math.max(0, primaryAttacker.stats.hp - result2.damage);
-                    updateHpBars();
-                    
-                    let resultText2 = `${secondaryAttacker.name} used ${secondaryMove}!\n`;
-                    if (result2.damage === 0) resultText2 += result2.text;
-                    else resultText2 += `${result2.text}It dealt ${result2.damage} damage.`;
-                    dialogue.innerText = resultText2;
-
-                    if (primaryAttacker.stats.hp === 0) {
-                        handleFaintState(primaryAttacker);
-                        return;
-                    }
-
-                    setTimeout(() => {
-                        dialogue.innerText = "What will your Pokémon do?";
-                        buildMovePanel(); 
-                    }, 2000);
-
-                }, 1400);
-            }, 2000);
-
-        }, 1400);
-    }
-
-    // --- Fixed Faint State Logic ---
-    function handleFaintState(faintedMon) {
-        const dialogue = document.getElementById('dialogue');
-        setTimeout(() => {
-            dialogue.innerText = `${faintedMon.name} fainted!`;
-            
-            if (faintedMon.isPlayer) {
-                // The Player Fainted
-                document.getElementById('player-sprite').style.display = 'none';
-                setTimeout(() => dialogue.innerText = "You lost! Better luck next time.", 1500);
-            } else {
-                // The Opponent Fainted
-                document.getElementById('opp-sprite').style.display = 'none';
-                setTimeout(() => dialogue.innerText = "You defeated Wild Gengar! You win!", 1500);
-            }
-        }, 1200);
+        return { damage: Math.max(1, finalDamage), text: msg };
     }
 </script>
 </body>

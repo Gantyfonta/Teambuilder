@@ -167,8 +167,8 @@
 
 <div class="container">
     <div class="header">
-        <h1>⚔️ Teambuilder v5 (With Stats)</h1>
-        <a href="home.html" class="home-btn">🏠 Main Menu</a>
+        <h1>⚔️ Teambuilder v5 (Fixed)</h1>
+        <a href="index.html" class="home-btn">🏠 Main Menu</a>
     </div>
     
     <div class="team-container" id="team-slots">
@@ -184,7 +184,6 @@
 </div>
 
 <script>
-    // Move Database 
     const moveDatabase = {
         "Tackle": { type: "Normal", power: 40 },
         "Vine Whip": { type: "Grass", power: 45 },
@@ -198,7 +197,6 @@
         "Bullet Punch": { type: "Steel", power: 40 }
     };
 
-    // Upgraded Pokemon Database (Now featuring Attack, Defense, Speed, and MaxHP)
     const pokemonDatabase = [
         { id: 1, name: "Chewer", type: "Ground", sprite: "sprites/chewer.png", emoji: "🌍", abilities: ["Sand Veil", "Arena Trap"], stats: { hp: 160, atk: 85, def: 95, spe: 45 }, learnset: ["Tackle", "Vine Whip", "Sludge Bomb"] },
         { id: 4, name: "Charmander", type: "Fire", sprite: "sprites/charmander.png", emoji: "🔥", abilities: ["Blaze", "Solar Power"], stats: { hp: 119, atk: 52, def: 43, spe: 65 }, learnset: ["Tackle", "Flamethrower"] },
@@ -210,7 +208,6 @@
         { id: 212, name: "Scizor", type: "Bug/Steel", sprite: "sprites/scizor.png", emoji: "✂️", abilities: ["Swarm", "Technician", "Light Metal"], stats: { hp: 150, atk: 130, def: 100, spe: 65 }, learnset: ["Tackle", "Bullet Punch"] }
     ];
 
-    // State Management
     let currentTeam = [null, null, null, null, null, null]; 
     const teamContainer = document.getElementById('team-slots');
     const rosterContainer = document.getElementById('roster');
@@ -219,20 +216,32 @@
         localStorage.setItem('myShowdownTeam', JSON.stringify(currentTeam));
     }
 
+    // --- CRITICAL FIX: Safe Schema Verification ---
     function loadTeam() {
         const savedData = localStorage.getItem('myShowdownTeam');
         if (savedData) {
-            currentTeam = JSON.parse(savedData);
+            try {
+                const parsedData = JSON.parse(savedData);
+                // If any slot has a pokemon but no stats, wipe it to prevent layout crashes
+                const isCorrupted = parsedData.some(slot => slot && slot.pokemon && !slot.pokemon.stats);
+                if (isCorrupted) {
+                    localStorage.removeItem('myShowdownTeam');
+                    currentTeam = [null, null, null, null, null, null];
+                } else {
+                    currentTeam = parsedData;
+                }
+            } catch (e) {
+                currentTeam = [null, null, null, null, null, null];
+            }
         }
     }
 
-    // Render the Team Slots
     function renderTeam() {
         teamContainer.innerHTML = '';
         currentTeam.forEach((slotData, slotIndex) => {
             const slotEl = document.createElement('div');
             
-            if (slotData) {
+            if (slotData && slotData.pokemon && slotData.pokemon.stats) {
                 slotEl.className = 'slot filled';
                 const p = slotData.pokemon;
                 
@@ -274,7 +283,6 @@
         });
     }
 
-    // Render Roster
     function renderRoster(searchQuery = '') {
         rosterContainer.innerHTML = ''; 
         const filteredPokemon = pokemonDatabase.filter(p => 

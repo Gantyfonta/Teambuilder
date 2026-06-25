@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #1e293b; /* Dark backdrop */
+            background-color: #1e293b;
             margin: 0;
             display: flex;
             justify-content: center;
@@ -16,20 +16,18 @@
             color: #fff;
         }
 
-        /* The main battle screen */
         .battle-container {
             width: 800px;
             height: 500px;
-            background: linear-gradient(to bottom, #7dd3fc, #e0f2fe, #dcfce7, #86efac); /* Sky to grass */
+            background: linear-gradient(to bottom, #7dd3fc, #e0f2fe, #dcfce7, #86efac); 
             border-radius: 12px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
             position: relative;
             overflow: hidden;
             border: 4px solid #334155;
-            display: none; /* Hidden until "Start" is clicked */
+            display: none; 
         }
 
-        /* Start Screen Overlay */
         #start-screen {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -62,12 +60,18 @@
             border-radius: 8px;
             border: 2px solid #cbd5e1;
             position: absolute;
-            width: 200px;
+            width: 220px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         .opponent-hud { top: 30px; left: 40px; }
         .player-hud { bottom: 160px; right: 40px; }
         
+        .hp-text {
+            font-size: 0.8em;
+            color: #475569;
+            text-align: right;
+            margin-top: 2px;
+        }
         .hp-bar-container {
             width: 100%;
             height: 10px;
@@ -78,9 +82,9 @@
         }
         .hp-bar {
             height: 100%;
-            background: #22c55e; /* Green health */
+            background: #22c55e; 
             width: 100%;
-            transition: width 0.3s;
+            transition: width 0.4s ease-out;
         }
 
         /* Sprites */
@@ -92,9 +96,9 @@
             image-rendering: pixelated;
         }
         .opponent-sprite { top: 60px; right: 100px; }
-        .player-sprite { bottom: 160px; left: 100px; transform: scaleX(-1); /* Flips sprite to face right */ }
+        .player-sprite { bottom: 160px; left: 100px; transform: scaleX(-1); }
 
-        /* UI Panel (Dialogue & Moves) */
+        /* UI Panel */
         .ui-panel {
             position: absolute;
             bottom: 0;
@@ -112,6 +116,7 @@
             color: #1e293b;
             border-right: 2px solid #cbd5e1;
             font-family: monospace;
+            white-space: pre-line; /* Allows newlines */
         }
 
         .moves-panel {
@@ -134,8 +139,8 @@
             color: #334155;
             transition: all 0.1s;
         }
-        .move-btn:hover { background: #bfdbfe; border-color: #3b82f6; }
-        .move-btn:active { transform: scale(0.98); }
+        .move-btn:hover:not(:disabled) { background: #bfdbfe; border-color: #3b82f6; }
+        .move-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     </style>
 </head>
@@ -153,14 +158,16 @@
     <div class="battle-container" id="battle-arena">
         
         <div class="hud opponent-hud">
-            <strong id="opp-name">Chewer</strong>
+            <strong id="opp-name">Wild Gengar</strong>
             <div class="hp-bar-container"><div class="hp-bar" id="opp-hp"></div></div>
+            <div class="hp-text" id="opp-hp-text">140 / 140</div>
         </div>
-        <img src="sprites/chewer.png" class="sprite opponent-sprite" id="opp-sprite" alt="Opponent">
+        <img src="sprites/gengar.png" class="sprite opponent-sprite" id="opp-sprite" alt="Opponent">
 
         <div class="hud player-hud">
             <strong id="player-name">Loading...</strong>
             <div class="hp-bar-container"><div class="hp-bar" id="player-hp"></div></div>
+            <div class="hp-text" id="player-hp-text">100 / 100</div>
         </div>
         <img src="" class="sprite player-sprite" id="player-sprite" alt="Player">
 
@@ -173,12 +180,12 @@
         </div>
 
     </div>
+
 <script>
-// 1. Audio Setup
     const bgMusic = document.getElementById('battle-music');
     bgMusic.volume = 0.4;
 
-    // 2. Move Database (Needed to look up Base Power)
+    // Move Profiles
     const moveDatabase = {
         "Tackle": { type: "Normal", power: 40 },
         "Vine Whip": { type: "Grass", power: 45 },
@@ -192,12 +199,14 @@
         "Bullet Punch": { type: "Steel", power: 40 }
     };
 
-    // 3. Battle State (HP tracking)
-    let playerActivePokemon = null;
-    
-    // Mock Stats for the prototype
-    let oppMaxHP = 150;
-    let oppCurrentHP = 150;
+    // Tracking variables
+    let playerMon = null;
+    let oppMon = {
+        name: "Wild Gengar",
+        sprite: "sprites/gengar.png",
+        stats: { hp: 140, maxHp: 140, atk: 95, def: 60, spe: 110 },
+        moves: ["Shadow Ball", "Sludge Bomb", "Tackle"]
+    };
 
     function startBattle() {
         document.getElementById('start-screen').style.display = 'none';
@@ -210,87 +219,175 @@
         const savedData = localStorage.getItem('myShowdownTeam');
         if (savedData) {
             const team = JSON.parse(savedData);
-            playerActivePokemon = team.find(slot => slot !== null);
+            const activeSlot = team.find(slot => slot !== null);
+            if (activeSlot) {
+                // Map local team schema into mutable active battle stats
+                playerMon = {
+                    name: activeSlot.pokemon.name,
+                    sprite: activeSlot.pokemon.sprite,
+                    stats: { 
+                        hp: activeSlot.pokemon.stats.hp, 
+                        maxHp: activeSlot.pokemon.stats.hp, 
+                        atk: activeSlot.pokemon.stats.atk, 
+                        def: activeSlot.pokemon.stats.def, 
+                        spe: activeSlot.pokemon.stats.spe 
+                    },
+                    moves: activeSlot.moves.filter(m => m !== "")
+                };
+            }
         }
 
-        if (playerActivePokemon) {
-            document.getElementById('player-name').innerText = playerActivePokemon.pokemon.name;
-            document.getElementById('player-sprite').src = playerActivePokemon.pokemon.sprite;
-            
-            const movesPanel = document.getElementById('moves-panel');
-            movesPanel.innerHTML = ''; 
-
-            playerActivePokemon.moves.forEach(move => {
-                const btn = document.createElement('button');
-                btn.className = 'move-btn';
-                btn.innerText = move || "---"; 
-                if (move) {
-                    btn.onclick = () => useMove(move);
-                } else {
-                    btn.disabled = true; 
-                }
-                movesPanel.appendChild(btn);
-            });
-
-            document.getElementById('dialogue').innerText = `Go! ${playerActivePokemon.pokemon.name}!`;
+        if (playerMon) {
+            document.getElementById('player-name').innerText = playerMon.name;
+            document.getElementById('player-sprite').src = playerMon.sprite;
+            updateHpBars();
+            buildMovePanel();
+            document.getElementById('dialogue').innerText = `Go! ${playerMon.name}!`;
         } else {
             document.getElementById('dialogue').innerText = "You have no Pokémon! Go to the Teambuilder first.";
         }
     }
 
-    // 4. The Damage Logic
-    function useMove(moveName) {
-        const dialogue = document.getElementById('dialogue');
-        const moveData = moveDatabase[moveName];
+    function buildMovePanel() {
+        const movesPanel = document.getElementById('moves-panel');
+        movesPanel.innerHTML = ''; 
 
-        if (!moveData) {
-            dialogue.innerText = `${playerActivePokemon.pokemon.name} used ${moveName}... but nothing happened!`;
-            return;
-        }
-
-        // --- THE MATH ---
-        // 1. Get Base Power
-        const basePower = moveData.power;
-        
-        // 2. Add some random variance (Damage rolls between 85% and 100%)
-        const randomRoll = (Math.floor(Math.random() * 16) + 85) / 100;
-        
-        // 3. Calculate final damage (Super simplified for prototype)
-        // We divide by 2 just so 120 BP moves don't instantly one-shot the 150 HP boss
-        const rawDamage = Math.floor((basePower / 2) * randomRoll);
-        
-        // Ensure we don't do negative damage, and cap at at least 1
-        const finalDamage = Math.max(1, rawDamage);
-
-        // --- APPLY DAMAGE ---
-        oppCurrentHP -= finalDamage;
-        if (oppCurrentHP < 0) oppCurrentHP = 0; // Prevent negative HP
-
-        // --- UPDATE UI ---
-        // Calculate percentage for the green bar
-        const hpPercentage = (oppCurrentHP / oppMaxHP) * 100;
-        document.getElementById('opp-hp').style.width = `${hpPercentage}%`;
-
-        // Change bar color to yellow or red if it gets low
-        const hpBarElement = document.getElementById('opp-hp');
-        if (hpPercentage < 20) {
-            hpBarElement.style.background = '#ef4444'; // Red
-        } else if (hpPercentage < 50) {
-            hpBarElement.style.background = '#eab308'; // Yellow
-        }
-
-        // Print to dialogue box
-        dialogue.innerText = `${playerActivePokemon.pokemon.name} used ${moveName}!\nIt dealt ${finalDamage} damage.`;
-
-        // Check for faint
-        if (oppCurrentHP === 0) {
-            setTimeout(() => {
-                dialogue.innerText = "Wild Gengar fainted! You won!";
-                document.getElementById('opp-sprite').style.display = 'none'; // Make sprite disappear
-            }, 1500); // Wait 1.5 seconds before showing victory text
+        // Populate up to 4 move choices
+        for (let i = 0; i < 4; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'move-btn';
+            const moveName = playerMon.moves[i];
+            btn.innerText = moveName || "---";
+            
+            if (moveName) {
+                btn.onclick = () => handleTurnSequence(moveName);
+            } else {
+                btn.disabled = true;
+            }
+            movesPanel.appendChild(btn);
         }
     }
-</script>
 
+    function setButtonsDisabled(shouldDisable) {
+        const buttons = document.querySelectorAll('.move-btn');
+        buttons.forEach(btn => btn.disabled = shouldDisable);
+    }
+
+    function updateHpBars() {
+        // Player UI update
+        const playerPct = (playerMon.stats.hp / playerMon.stats.maxHp) * 100;
+        const pBar = document.getElementById('player-hp');
+        pBar.style.width = `${playerPct}%`;
+        pBar.style.background = playerPct < 20 ? '#ef4444' : playerPct < 50 ? '#eab308' : '#22c55e';
+        document.getElementById('player-hp-text').innerText = `${playerMon.stats.hp} / ${playerMon.stats.maxHp}`;
+
+        // Opponent UI update
+        const oppPct = (oppMon.stats.hp / oppMon.stats.maxHp) * 100;
+        const oBar = document.getElementById('opp-hp');
+        oBar.style.width = `${oppPct}%`;
+        oBar.style.background = oppPct < 20 ? '#ef4444' : oppPct < 50 ? '#eab308' : '#22c55e';
+        document.getElementById('opp-hp-text').innerText = `${oppMon.stats.hp} / ${oppMon.stats.maxHp}`;
+    }
+
+    // Mathematical formula balancing Attack vs Defense vs Move Power
+    function calculateDamage(attacker, defender, moveName) {
+        const moveData = moveDatabase[moveName];
+        if (!moveData) return 0;
+
+        const basePower = moveData.power;
+        const attackStat = attacker.stats.atk;
+        const defenseStat = defender.stats.def;
+
+        // Custom scaled damage equation matching standard RPG conventions
+        // Level is normalized to 50: ((2 * 50 / 5 + 2) * BP * Atk / Def) / 50 + 2
+        const baseDamage = Math.floor((((22 * basePower * attackStat) / defenseStat) / 50) + 2);
+        
+        // Random variance multiplier (85% to 100%)
+        const randomRoll = (Math.floor(Math.random() * 16) + 85) / 100;
+        
+        return Math.max(1, Math.floor(baseDamage * randomRoll));
+    }
+
+    // --- TURN MANAGER SEQUENCE ---
+    function handleTurnSequence(playerMove) {
+        setButtonsDisabled(true); // Prevent UI interactions during automated turns
+        const dialogue = document.getElementById('dialogue');
+
+        // Opponent choosing a randomized action out of its list
+        const randomIdx = Math.floor(Math.random() * oppMon.moves.length);
+        const oppMove = oppMon.moves[randomIdx];
+
+        // 1. Evaluate Turn Priority via Speed Profile
+        let primaryAttacker, secondaryAttacker;
+        let primaryMove, secondaryMove;
+        let pIsUser = true;
+
+        if (playerMon.stats.spe >= oppMon.stats.spe) {
+            primaryAttacker = playerMon; primaryMove = playerMove;
+            secondaryAttacker = oppMon; secondaryMove = oppMove;
+            pIsUser = true;
+        } else {
+            primaryAttacker = oppMon; primaryMove = oppMove;
+            secondaryAttacker = playerMon; secondaryMove = playerMove;
+            pIsUser = false;
+        }
+
+        // 2. Action Sequence Stage 1: Speed Leader strikes
+        dialogue.innerText = `${primaryAttacker.name} used ${primaryMove}!`;
+        
+        setTimeout(() => {
+            const dmg1 = calculateDamage(primaryAttacker, secondaryAttacker, primaryMove);
+            secondaryAttacker.stats.hp = Math.max(0, secondaryAttacker.stats.hp - dmg1);
+            updateHpBars();
+            dialogue.innerText = `${primaryAttacker.name} used ${primaryMove}!\nIt dealt ${dmg1} damage.`;
+
+            // Evaluate if secondary targets fainted
+            if (secondaryAttacker.stats.hp === 0) {
+                handleFaintState(secondaryAttacker, pIsUser);
+                return; // Cease execution loop early
+            }
+
+            // 3. Action Sequence Stage 2: Speed Underdog strikes back
+            setTimeout(() => {
+                dialogue.innerText = `${secondaryAttacker.name} used ${secondaryMove}!`;
+
+                setTimeout(() => {
+                    const dmg2 = calculateDamage(secondaryAttacker, primaryAttacker, secondaryMove);
+                    primaryAttacker.stats.hp = Math.max(0, primaryAttacker.stats.hp - dmg2);
+                    updateHpBars();
+                    dialogue.innerText = `${secondaryAttacker.name} used ${secondaryMove}!\nIt dealt ${dmg2} damage.`;
+
+                    if (primaryAttacker.stats.hp === 0) {
+                        handleFaintState(primaryAttacker, !pIsUser);
+                        return;
+                    }
+
+                    // Reset scene state for subsequent commands
+                    setTimeout(() => {
+                        dialogue.innerText = "What will your Pokémon do?";
+                        buildMovePanel(); // Restores original controls safely
+                    }, 1800);
+
+                }, 1400);
+            }, 1800);
+
+        }, 1400);
+    }
+
+    function handleFaintState(faintedMon, userFainted) {
+        const dialogue = document.getElementById('dialogue');
+        setTimeout(() => {
+            dialogue.innerText = `${faintedMon.name} fainted!`;
+            
+            if (userFainted) {
+                document.getElementById('player-sprite').style.display = 'none';
+                setTimeout(() => dialogue.innerText = "You lost! Better luck next time.", 1500);
+            } else {
+                document.getElementById('opp-sprite').style.display = 'none';
+                setTimeout(() => dialogue.innerText = "You defeated Wild Gengar! You win!", 1500);
+            }
+        }, 1200);
+    }
+</script>
 </body>
 </html>

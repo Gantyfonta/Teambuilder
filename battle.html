@@ -135,6 +135,15 @@
             cursor: pointer;
             color: #334155;
             transition: all 0.1s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .move-type {
+            font-size: 0.75em;
+            color: #64748b;
+            margin-top: 2px;
         }
         .move-btn:hover:not(:disabled) { background: #bfdbfe; border-color: #3b82f6; }
         .move-btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -176,6 +185,21 @@
     const bgMusic = document.getElementById('battle-music');
     bgMusic.volume = 0.4;
 
+    // --- NEW: Type Effectiveness Chart ---
+    const typeChart = {
+        "Normal": { "Ghost": 0, "Steel": 0.5 },
+        "Fire": { "Fire": 0.5, "Water": 0.5, "Grass": 2.0, "Bug": 2.0, "Steel": 2.0, "Dragon": 0.5 },
+        "Water": { "Fire": 2.0, "Water": 0.5, "Grass": 0.5, "Ground": 2.0, "Dragon": 0.5 },
+        "Grass": { "Fire": 0.5, "Water": 2.0, "Grass": 0.5, "Poison": 0.5, "Ground": 2.0, "Bug": 0.5, "Steel": 0.5, "Dragon": 0.5 },
+        "Electric": { "Water": 2.0, "Electric": 0.5, "Grass": 0.5, "Ground": 0, "Dragon": 0.5 },
+        "Poison": { "Grass": 2.0, "Poison": 0.5, "Ground": 0.5, "Ghost": 0.5, "Steel": 0 },
+        "Ground": { "Fire": 2.0, "Electric": 2.0, "Grass": 0.5, "Poison": 2.0, "Bug": 0.5, "Steel": 2.0 },
+        "Bug": { "Fire": 0.5, "Grass": 2.0, "Poison": 0.5, "Ghost": 0.5, "Steel": 0.5 },
+        "Ghost": { "Normal": 0, "Ghost": 2.0 },
+        "Steel": { "Fire": 0.5, "Water": 0.5, "Electric": 0.5, "Steel": 0.5 },
+        "Dragon": { "Steel": 0.5, "Dragon": 2.0 }
+    };
+
     const moveDatabase = {
         "Tackle": { type: "Normal", power: 40 },
         "Vine Whip": { type: "Grass", power: 45 },
@@ -186,15 +210,19 @@
         "Shadow Ball": { type: "Ghost", power: 80 },
         "Body Slam": { type: "Normal", power: 85 },
         "Outrage": { type: "Dragon", power: 120 },
+        "Astonish": { type: "Ghost", power: 30 },
+        "Pounce": { type: "Bug", power: 50 },
         "Bullet Punch": { type: "Steel", power: 40 }
     };
 
     let playerMon = null;
     let oppMon = {
         name: "Wild Gengar",
+        type: "Ghost/Poison", // Added type!
         sprite: "sprites/gengar.png",
         stats: { hp: 140, maxHp: 140, atk: 95, def: 60, spe: 110 },
-        moves: ["Shadow Ball", "Sludge Bomb", "Tackle"]
+        moves: ["Shadow Ball", "Sludge Bomb", "Tackle"],
+        isPlayer: false // Added explicit flag for faints
     };
 
     function startBattle() {
@@ -209,11 +237,11 @@
         if (savedData) {
             try {
                 const team = JSON.parse(savedData);
-                // Safe lookup: ensure slot has a pokemon AND stats data
                 const activeSlot = team.find(slot => slot !== null && slot.pokemon && slot.pokemon.stats);
                 if (activeSlot) {
                     playerMon = {
                         name: activeSlot.pokemon.name,
+                        type: activeSlot.pokemon.type, // Bring in their type
                         sprite: activeSlot.pokemon.sprite,
                         stats: { 
                             hp: activeSlot.pokemon.stats.hp, 
@@ -222,7 +250,8 @@
                             def: activeSlot.pokemon.stats.def, 
                             spe: activeSlot.pokemon.stats.spe 
                         },
-                        moves: activeSlot.moves.filter(m => m !== "")
+                        moves: activeSlot.moves.filter(m => m !== ""),
+                        isPlayer: true
                     };
                 }
             } catch (e) {
@@ -230,13 +259,14 @@
             }
         }
 
-        // --- DEFENSIVE FALLBACK: Safety feature if Teambuilder is empty ---
         if (!playerMon) {
             playerMon = {
                 name: "Pikachu (Buddy)",
+                type: "Electric",
                 sprite: "sprites/pikachu.png",
                 stats: { hp: 115, maxHp: 115, atk: 55, def: 40, spe: 90 },
-                moves: ["Thunderbolt", "Tackle"]
+                moves: ["Thunderbolt", "Tackle"],
+                isPlayer: true
             };
         }
 
@@ -255,11 +285,13 @@
             const btn = document.createElement('button');
             btn.className = 'move-btn';
             const moveName = playerMon.moves[i];
-            btn.innerText = moveName || "---";
             
             if (moveName) {
+                const mType = moveDatabase[moveName].type;
+                btn.innerHTML = `<div>${moveName}</div><div class="move-type">${mType}</div>`;
                 btn.onclick = () => handleTurnSequence(moveName);
             } else {
+                btn.innerText = "---";
                 btn.disabled = true;
             }
             movesPanel.appendChild(btn);
@@ -285,18 +317,46 @@
         document.getElementById('opp-hp-text').innerText = `${oppMon.stats.hp} / ${oppMon.stats.maxHp}`;
     }
 
+    // --- Helper Function: Get Type Multiplier ---
+    function getEffectiveness(moveType, defenderTypeString) {
+        const defTypes = defenderTypeString.split('/'); // Splits "Ghost/Poison" into array
+        let multiplier = 1;
+        
+        defTypes.forEach(t => {
+            if (typeChart[moveType] && typeChart[moveType][t] !== undefined) {
+                multiplier *= typeChart[moveType][t];
+            }
+        });
+        return multiplier;
+    }
+
+    // --- Updated Damage Math ---
     function calculateDamage(attacker, defender, moveName) {
         const moveData = moveDatabase[moveName];
-        if (!moveData) return 0;
+        if (!moveData) return { damage: 0, text: "" };
 
-        const basePower = moveData.power;
-        const attackStat = attacker.stats.atk;
-        const defenseStat = defender.stats.def;
+        // 1. Base Damage Math
+        const baseDamage = Math.floor((((22 * moveData.power * attacker.stats.atk) / defender.stats.def) / 50) + 2);
+        
+        // 2. Type Effectiveness
+        const typeMult = getEffectiveness(moveData.type, defender.type);
+        
+        // 3. STAB (Same Type Attack Bonus - 1.5x damage if types match)
+        const stabMult = attacker.type.includes(moveData.type) ? 1.5 : 1;
 
-        const baseDamage = Math.floor((((22 * basePower * attackStat) / defenseStat) / 50) + 2);
+        // 4. Random Roll
         const randomRoll = (Math.floor(Math.random() * 16) + 85) / 100;
         
-        return Math.max(1, Math.floor(baseDamage * randomRoll));
+        const finalDamage = Math.floor(baseDamage * typeMult * stabMult * randomRoll);
+        
+        // Check Immunities
+        if (typeMult === 0) return { damage: 0, text: "It had no effect!\n" };
+
+        let effectText = "";
+        if (typeMult > 1) effectText = "It's super effective!\n";
+        if (typeMult < 1) effectText = "It's not very effective...\n";
+
+        return { damage: Math.max(1, finalDamage), text: effectText };
     }
 
     function handleTurnSequence(playerMove) {
@@ -308,28 +368,29 @@
 
         let primaryAttacker, secondaryAttacker;
         let primaryMove, secondaryMove;
-        let pIsUser = true;
 
         if (playerMon.stats.spe >= oppMon.stats.spe) {
             primaryAttacker = playerMon; primaryMove = playerMove;
             secondaryAttacker = oppMon; secondaryMove = oppMove;
-            pIsUser = true;
         } else {
             primaryAttacker = oppMon; primaryMove = oppMove;
             secondaryAttacker = playerMon; secondaryMove = playerMove;
-            pIsUser = false;
         }
 
         dialogue.innerText = `${primaryAttacker.name} used ${primaryMove}!`;
         
         setTimeout(() => {
-            const dmg1 = calculateDamage(primaryAttacker, secondaryAttacker, primaryMove);
-            secondaryAttacker.stats.hp = Math.max(0, secondaryAttacker.stats.hp - dmg1);
+            const result1 = calculateDamage(primaryAttacker, secondaryAttacker, primaryMove);
+            secondaryAttacker.stats.hp = Math.max(0, secondaryAttacker.stats.hp - result1.damage);
             updateHpBars();
-            dialogue.innerText = `${primaryAttacker.name} used ${primaryMove}!\nIt dealt ${dmg1} damage.`;
+            
+            let resultText1 = `${primaryAttacker.name} used ${primaryMove}!\n`;
+            if (result1.damage === 0) resultText1 += result1.text;
+            else resultText1 += `${result1.text}It dealt ${result1.damage} damage.`;
+            dialogue.innerText = resultText1;
 
             if (secondaryAttacker.stats.hp === 0) {
-                handleFaintState(secondaryAttacker, pIsUser);
+                handleFaintState(secondaryAttacker);
                 return; 
             }
 
@@ -337,35 +398,43 @@
                 dialogue.innerText = `${secondaryAttacker.name} used ${secondaryMove}!`;
 
                 setTimeout(() => {
-                    const dmg2 = calculateDamage(secondaryAttacker, primaryAttacker, secondaryMove);
-                    primaryAttacker.stats.hp = Math.max(0, primaryAttacker.stats.hp - dmg2);
+                    const result2 = calculateDamage(secondaryAttacker, primaryAttacker, secondaryMove);
+                    primaryAttacker.stats.hp = Math.max(0, primaryAttacker.stats.hp - result2.damage);
                     updateHpBars();
-                    dialogue.innerText = `${secondaryAttacker.name} used ${secondaryMove}!\nIt dealt ${dmg2} damage.`;
+                    
+                    let resultText2 = `${secondaryAttacker.name} used ${secondaryMove}!\n`;
+                    if (result2.damage === 0) resultText2 += result2.text;
+                    else resultText2 += `${result2.text}It dealt ${result2.damage} damage.`;
+                    dialogue.innerText = resultText2;
 
                     if (primaryAttacker.stats.hp === 0) {
-                        handleFaintState(primaryAttacker, !pIsUser);
+                        handleFaintState(primaryAttacker);
                         return;
                     }
 
                     setTimeout(() => {
                         dialogue.innerText = "What will your Pokémon do?";
                         buildMovePanel(); 
-                    }, 1800);
+                    }, 2000);
 
                 }, 1400);
-            }, 1800);
+            }, 2000);
 
         }, 1400);
     }
 
-    function handleFaintState(faintedMon, userFainted) {
+    // --- Fixed Faint State Logic ---
+    function handleFaintState(faintedMon) {
         const dialogue = document.getElementById('dialogue');
         setTimeout(() => {
             dialogue.innerText = `${faintedMon.name} fainted!`;
-            if (userFainted) {
+            
+            if (faintedMon.isPlayer) {
+                // The Player Fainted
                 document.getElementById('player-sprite').style.display = 'none';
                 setTimeout(() => dialogue.innerText = "You lost! Better luck next time.", 1500);
             } else {
+                // The Opponent Fainted
                 document.getElementById('opp-sprite').style.display = 'none';
                 setTimeout(() => dialogue.innerText = "You defeated Wild Gengar! You win!", 1500);
             }

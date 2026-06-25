@@ -194,12 +194,14 @@
         "Shadow Ball": { type: "Ghost", power: 80 },
         "Body Slam": { type: "Normal", power: 85 },
         "Outrage": { type: "Dragon", power: 120 },
+        "Astonish": { type: "Ghost", power: 30 },
+        "Pounce": { type: "Bug", power: 50 },
         "Bullet Punch": { type: "Steel", power: 40 }
     };
 
     const pokemonDatabase = [
-        { id: 1, name: "Chewer", type: "Ground", sprite: "sprites/chewer.png", emoji: "🌍", abilities: ["Sand Veil", "Arena Trap"], stats: { hp: 160, atk: 85, def: 95, spe: 45 }, learnset: ["Tackle", "Vine Whip", "Sludge Bomb"] },
-        { id: 4, name: "Charmander", type: "Fire", sprite: "sprites/charmander.png", emoji: "🔥", abilities: ["Blaze", "Solar Power"], stats: { hp: 119, atk: 52, def: 43, spe: 65 }, learnset: ["Tackle", "Flamethrower"] },
+        { id: 1, name: "Chewer", type: "Ground", sprite: "sprites/chewer.png", emoji: "🌍", abilities: ["Simple", "Unaware"], stats: { hp: 59, atk: 45, def: 40, spe: 31 }, learnset: ["Tackle", "Vine Whip", "Sludge Bomb"] },
+        { id: 4, name: "Apptle", type: "Grass/Ghost", sprite: "sprites/Apptle.png", emoji: "🪴/👻", abilities: ["Ripen", "Gluttony"], stats: { hp: 50, atk: 30, def: 55, spe: 20 }, learnset: ["Astonish", "Pounce"] },
         { id: 7, name: "Squirtle", type: "Water", sprite: "sprites/squirtle.png", emoji: "💧", abilities: ["Torrent", "Rain Dish"], stats: { hp: 124, atk: 48, def: 65, spe: 43 }, learnset: ["Tackle", "Water Gun"] },
         { id: 25, name: "Pikachu", type: "Electric", sprite: "sprites/pikachu.png", emoji: "⚡", abilities: ["Static", "Lightning Rod"], stats: { hp: 115, atk: 55, def: 40, spe: 90 }, learnset: ["Tackle", "Thunderbolt"] },
         { id: 94, name: "Gengar", type: "Ghost/Poison", sprite: "sprites/gengar.png", emoji: "👻", abilities: ["Cursed Body"], stats: { hp: 140, atk: 95, def: 60, spe: 110 }, learnset: ["Shadow Ball", "Sludge Bomb"] },
@@ -241,110 +243,3 @@
         currentTeam.forEach((slotData, slotIndex) => {
             const slotEl = document.createElement('div');
             
-            if (slotData && slotData.pokemon && slotData.pokemon.stats) {
-                slotEl.className = 'slot filled';
-                const p = slotData.pokemon;
-                
-                let abilityOptionsHTML = `<option value="">Select Ability</option>`;
-                p.abilities.forEach(ability => {
-                    const isSelected = slotData.ability === ability ? 'selected' : '';
-                    abilityOptionsHTML += `<option value="${ability}" ${isSelected}>${ability}</option>`;
-                });
-                const abilitySelectHTML = `<select class="ability-select" onchange="updateAbility(${slotIndex}, this.value)">${abilityOptionsHTML}</select>`;
-
-                let moveSelectsHTML = '';
-                for(let i = 0; i < 4; i++) {
-                    let optionsHTML = `<option value="">Select Move ${i+1}</option>`;
-                    p.learnset.forEach(moveName => {
-                        const isSelected = slotData.moves[i] === moveName ? 'selected' : '';
-                        const moveInfo = moveDatabase[moveName];
-                        const powerText = moveInfo && moveInfo.power ? ` (BP: ${moveInfo.power})` : '';
-                        optionsHTML += `<option value="${moveName}" ${isSelected}>${moveName}${powerText}</option>`;
-                    });
-                    
-                    moveSelectsHTML += `<select onchange="updateMove(${slotIndex}, ${i}, this.value)">${optionsHTML}</select>`;
-                }
-
-                slotEl.innerHTML = `
-                    <button class="remove-btn" onclick="removePokemon(${slotIndex})" title="Remove Pokémon">X</button>
-                    <img src="${p.sprite}" alt="${p.name}" class="sprite-img" onerror="this.outerHTML='<div style=\\'font-size: 3em; margin-bottom: 10px;\\'>${p.emoji}</div>'">
-                    <strong>${p.name}</strong>
-                    <div style="font-size: 0.75em; color: #64748b;">A:${p.stats.atk} D:${p.stats.def} S:${p.stats.spe}</div>
-                    <div class="dropdowns-container">
-                        ${abilitySelectHTML}
-                        ${moveSelectsHTML}
-                    </div>
-                `;
-            } else {
-                slotEl.className = 'slot';
-                slotEl.innerHTML = `<span style="color: #94a3b8;">Empty Slot</span>`;
-            }
-            teamContainer.appendChild(slotEl);
-        });
-    }
-
-    function renderRoster(searchQuery = '') {
-        rosterContainer.innerHTML = ''; 
-        const filteredPokemon = pokemonDatabase.filter(p => 
-            p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-            p.type.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-
-        filteredPokemon.forEach(pokemon => {
-            const card = document.createElement('div');
-            card.className = 'pokemon-card';
-            card.innerHTML = `
-                <img src="${pokemon.sprite}" alt="${pokemon.name}" class="sprite-img" onerror="this.outerHTML='<div style=\\'font-size: 3em; margin-bottom: 10px;\\'>${pokemon.emoji}</div>'">
-                <br>
-                <strong>${pokemon.name}</strong>
-                <div class="type">${pokemon.type}</div>
-                <div class="stats-text">HP:${pokemon.stats.hp} A:${pokemon.stats.atk} D:${pokemon.stats.def} S:${pokemon.stats.spe}</div>
-            `;
-            card.onclick = () => addPokemon(pokemon);
-            rosterContainer.appendChild(card);
-        });
-    }
-
-    function handleSearch() {
-        const query = document.getElementById('search-bar').value;
-        renderRoster(query);
-    }
-
-    function addPokemon(pokemon) {
-        const emptyIndex = currentTeam.findIndex(slot => slot === null);
-        if (emptyIndex !== -1) {
-            currentTeam[emptyIndex] = {
-                pokemon: pokemon,
-                ability: "",
-                moves: ["", "", "", ""] 
-            };
-            saveTeam();
-            renderTeam();
-        } else {
-            alert("Your team is full! Remove a Pokémon first.");
-        }
-    }
-
-    function updateAbility(slotIndex, abilityName) {
-        currentTeam[slotIndex].ability = abilityName;
-        saveTeam();
-    }
-
-    function updateMove(slotIndex, moveIndex, moveName) {
-        currentTeam[slotIndex].moves[moveIndex] = moveName;
-        saveTeam();
-    }
-
-    function removePokemon(index) {
-        currentTeam[index] = null;
-        saveTeam();
-        renderTeam();
-    }
-
-    loadTeam(); 
-    renderTeam();
-    renderRoster();
-</script>
-
-</body>
-</html>

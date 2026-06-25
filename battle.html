@@ -173,68 +173,124 @@
         </div>
 
     </div>
-
 <script>
-    // 1. Audio Setup
+// 1. Audio Setup
     const bgMusic = document.getElementById('battle-music');
-    bgMusic.volume = 0.4; // Set to 40% so it doesn't blast their ears
+    bgMusic.volume = 0.4;
 
-    // 2. Battle State
+    // 2. Move Database (Needed to look up Base Power)
+    const moveDatabase = {
+        "Tackle": { type: "Normal", power: 40 },
+        "Vine Whip": { type: "Grass", power: 45 },
+        "Sludge Bomb": { type: "Poison", power: 90 },
+        "Flamethrower": { type: "Fire", power: 90 },
+        "Water Gun": { type: "Water", power: 40 },
+        "Thunderbolt": { type: "Electric", power: 90 },
+        "Shadow Ball": { type: "Ghost", power: 80 },
+        "Body Slam": { type: "Normal", power: 85 },
+        "Outrage": { type: "Dragon", power: 120 },
+        "Bullet Punch": { type: "Steel", power: 40 }
+    };
+
+    // 3. Battle State (HP tracking)
     let playerActivePokemon = null;
+    
+    // Mock Stats for the prototype
+    let oppMaxHP = 150;
+    let oppCurrentHP = 150;
 
     function startBattle() {
-        // Hide start screen, show arena, play music!
         document.getElementById('start-screen').style.display = 'none';
         document.getElementById('battle-arena').style.display = 'block';
         bgMusic.play();
-
         initializePlayerTeam();
     }
 
     function initializePlayerTeam() {
-        // Fetch the team they built in v5!
         const savedData = localStorage.getItem('myShowdownTeam');
         if (savedData) {
             const team = JSON.parse(savedData);
-            // Find the first Pokémon that isn't null
             playerActivePokemon = team.find(slot => slot !== null);
         }
 
         if (playerActivePokemon) {
-            // Update UI with player's first Pokémon
             document.getElementById('player-name').innerText = playerActivePokemon.pokemon.name;
             document.getElementById('player-sprite').src = playerActivePokemon.pokemon.sprite;
             
-            // Build the move buttons
             const movesPanel = document.getElementById('moves-panel');
-            movesPanel.innerHTML = ''; // Clear it
+            movesPanel.innerHTML = ''; 
 
             playerActivePokemon.moves.forEach(move => {
                 const btn = document.createElement('button');
                 btn.className = 'move-btn';
-                // If they left a slot blank, show dashes
                 btn.innerText = move || "---"; 
                 if (move) {
                     btn.onclick = () => useMove(move);
                 } else {
-                    btn.disabled = true; // Disable empty slots
+                    btn.disabled = true; 
                 }
                 movesPanel.appendChild(btn);
             });
 
             document.getElementById('dialogue').innerText = `Go! ${playerActivePokemon.pokemon.name}!`;
         } else {
-            // Fallback if they didn't use the teambuilder first
             document.getElementById('dialogue').innerText = "You have no Pokémon! Go to the Teambuilder first.";
         }
     }
 
+    // 4. The Damage Logic
     function useMove(moveName) {
-        // This is where the math will eventually go!
         const dialogue = document.getElementById('dialogue');
-        dialogue.innerText = `${playerActivePokemon.pokemon.name} used ${moveName}!\n(Damage calculation coming soon...)`;
-    }
+        const moveData = moveDatabase[moveName];
 
+        if (!moveData) {
+            dialogue.innerText = `${playerActivePokemon.pokemon.name} used ${moveName}... but nothing happened!`;
+            return;
+        }
+
+        // --- THE MATH ---
+        // 1. Get Base Power
+        const basePower = moveData.power;
+        
+        // 2. Add some random variance (Damage rolls between 85% and 100%)
+        const randomRoll = (Math.floor(Math.random() * 16) + 85) / 100;
+        
+        // 3. Calculate final damage (Super simplified for prototype)
+        // We divide by 2 just so 120 BP moves don't instantly one-shot the 150 HP boss
+        const rawDamage = Math.floor((basePower / 2) * randomRoll);
+        
+        // Ensure we don't do negative damage, and cap at at least 1
+        const finalDamage = Math.max(1, rawDamage);
+
+        // --- APPLY DAMAGE ---
+        oppCurrentHP -= finalDamage;
+        if (oppCurrentHP < 0) oppCurrentHP = 0; // Prevent negative HP
+
+        // --- UPDATE UI ---
+        // Calculate percentage for the green bar
+        const hpPercentage = (oppCurrentHP / oppMaxHP) * 100;
+        document.getElementById('opp-hp').style.width = `${hpPercentage}%`;
+
+        // Change bar color to yellow or red if it gets low
+        const hpBarElement = document.getElementById('opp-hp');
+        if (hpPercentage < 20) {
+            hpBarElement.style.background = '#ef4444'; // Red
+        } else if (hpPercentage < 50) {
+            hpBarElement.style.background = '#eab308'; // Yellow
+        }
+
+        // Print to dialogue box
+        dialogue.innerText = `${playerActivePokemon.pokemon.name} used ${moveName}!\nIt dealt ${finalDamage} damage.`;
+
+        // Check for faint
+        if (oppCurrentHP === 0) {
+            setTimeout(() => {
+                dialogue.innerText = "Wild Gengar fainted! You won!";
+                document.getElementById('opp-sprite').style.display = 'none'; // Make sprite disappear
+            }, 1500); // Wait 1.5 seconds before showing victory text
+        }
+    }
 </script>
+
 </body>
 </html>

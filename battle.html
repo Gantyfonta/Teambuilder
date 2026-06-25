@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battle Arena</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e293b; /* Dark backdrop */
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #fff;
+        }
+
+        /* The main battle screen */
+        .battle-container {
+            width: 800px;
+            height: 500px;
+            background: linear-gradient(to bottom, #7dd3fc, #e0f2fe, #dcfce7, #86efac); /* Sky to grass */
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            position: relative;
+            overflow: hidden;
+            border: 4px solid #334155;
+            display: none; /* Hidden until "Start" is clicked */
+        }
+
+        /* Start Screen Overlay */
+        #start-screen {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        .start-btn {
+            padding: 15px 30px;
+            font-size: 1.5em;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .start-btn:hover { background: #dc2626; }
+
+        /* HUD elements */
+        .hud {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 2px solid #cbd5e1;
+            position: absolute;
+            width: 200px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .opponent-hud { top: 30px; left: 40px; }
+        .player-hud { bottom: 160px; right: 40px; }
+        
+        .hp-bar-container {
+            width: 100%;
+            height: 10px;
+            background: #cbd5e1;
+            border-radius: 5px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        .hp-bar {
+            height: 100%;
+            background: #22c55e; /* Green health */
+            width: 100%;
+            transition: width 0.3s;
+        }
+
+        /* Sprites */
+        .sprite {
+            position: absolute;
+            width: 160px;
+            height: 160px;
+            object-fit: contain;
+            image-rendering: pixelated;
+        }
+        .opponent-sprite { top: 60px; right: 100px; }
+        .player-sprite { bottom: 160px; left: 100px; transform: scaleX(-1); /* Flips sprite to face right */ }
+
+        /* UI Panel (Dialogue & Moves) */
+        .ui-panel {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 140px;
+            background: #ffffff;
+            border-top: 4px solid #334155;
+            display: flex;
+        }
+        
+        .dialogue-box {
+            flex: 1;
+            padding: 20px;
+            font-size: 1.2em;
+            color: #1e293b;
+            border-right: 2px solid #cbd5e1;
+            font-family: monospace;
+        }
+
+        .moves-panel {
+            width: 400px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 10px;
+            padding: 15px;
+            background: #f8fafc;
+        }
+
+        .move-btn {
+            background: #e2e8f0;
+            border: 2px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            color: #334155;
+            transition: all 0.1s;
+        }
+        .move-btn:hover { background: #bfdbfe; border-color: #3b82f6; }
+        .move-btn:active { transform: scale(0.98); }
+
+    </style>
+</head>
+<body>
+
+    <audio id="battle-music" loop>
+        <source src="battle-theme.mp3" type="audio/mpeg">
+    </audio>
+
+    <div id="start-screen">
+        <h1 style="margin-bottom: 20px;">Ready to Battle?</h1>
+        <button class="start-btn" onclick="startBattle()">BATTLE!</button>
+    </div>
+
+    <div class="battle-container" id="battle-arena">
+        
+        <div class="hud opponent-hud">
+            <strong id="opp-name">Wild Gengar</strong>
+            <div class="hp-bar-container"><div class="hp-bar" id="opp-hp"></div></div>
+        </div>
+        <img src="sprites/gengar.png" class="sprite opponent-sprite" id="opp-sprite" alt="Opponent">
+
+        <div class="hud player-hud">
+            <strong id="player-name">Loading...</strong>
+            <div class="hp-bar-container"><div class="hp-bar" id="player-hp"></div></div>
+        </div>
+        <img src="" class="sprite player-sprite" id="player-sprite" alt="Player">
+
+        <div class="ui-panel">
+            <div class="dialogue-box" id="dialogue">
+                What will your Pokémon do?
+            </div>
+            <div class="moves-panel" id="moves-panel">
+                </div>
+        </div>
+
+    </div>
+
+<script>
+    // 1. Audio Setup
+    const bgMusic = document.getElementById('battle-music');
+    bgMusic.volume = 0.4; // Set to 40% so it doesn't blast their ears
+
+    // 2. Battle State
+    let playerActivePokemon = null;
+
+    function startBattle() {
+        // Hide start screen, show arena, play music!
+        document.getElementById('start-screen').style.display = 'none';
+        document.getElementById('battle-arena').style.display = 'block';
+        bgMusic.play();
+
+        initializePlayerTeam();
+    }
+
+    function initializePlayerTeam() {
+        // Fetch the team they built in v5!
+        const savedData = localStorage.getItem('myShowdownTeam');
+        if (savedData) {
+            const team = JSON.parse(savedData);
+            // Find the first Pokémon that isn't null
+            playerActivePokemon = team.find(slot => slot !== null);
+        }
+
+        if (playerActivePokemon) {
+            // Update UI with player's first Pokémon
+            document.getElementById('player-name').innerText = playerActivePokemon.pokemon.name;
+            document.getElementById('player-sprite').src = playerActivePokemon.pokemon.sprite;
+            
+            // Build the move buttons
+            const movesPanel = document.getElementById('moves-panel');
+            movesPanel.innerHTML = ''; // Clear it
+
+            playerActivePokemon.moves.forEach(move => {
+                const btn = document.createElement('button');
+                btn.className = 'move-btn';
+                // If they left a slot blank, show dashes
+                btn.innerText = move || "---"; 
+                if (move) {
+                    btn.onclick = () => useMove(move);
+                } else {
+                    btn.disabled = true; // Disable empty slots
+                }
+                movesPanel.appendChild(btn);
+            });
+
+            document.getElementById('dialogue').innerText = `Go! ${playerActivePokemon.pokemon.name}!`;
+        } else {
+            // Fallback if they didn't use the teambuilder first
+            document.getElementById('dialogue').innerText = "You have no Pokémon! Go to the Teambuilder first.";
+        }
+    }
+
+    function useMove(moveName) {
+        // This is where the math will eventually go!
+        const dialogue = document.getElementById('dialogue');
+        dialogue.innerText = `${playerActivePokemon.pokemon.name} used ${moveName}!\n(Damage calculation coming soon...)`;
+    }
+
+</script>
+</body>
+</html>

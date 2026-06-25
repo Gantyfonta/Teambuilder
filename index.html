@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon Web Battles</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f0f9ff 0%, #dbeafe 100%);
+            color: #1e293b;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .menu-container {
+            background: #ffffff;
+            padding: 50px 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 450px;
+            width: 100%;
+        }
+
+        .title {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: #0f172a;
+            font-weight: 800;
+        }
+
+        .subtitle {
+            color: #64748b;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .menu-btn {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            color: #334155;
+            padding: 18px 24px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-decoration: none; /* In case we use <a> tags */
+        }
+
+        /* Unique hover effects for each button */
+        .btn-find:hover {
+            background: #eff6ff;
+            border-color: #3b82f6;
+            color: #1d4ed8;
+            transform: translateY(-2px);
+        }
+
+        .btn-build:hover {
+            background: #f0fdf4;
+            border-color: #22c55e;
+            color: #15803d;
+            transform: translateY(-2px);
+        }
+
+        .btn-random:hover {
+            background: #fdf2f8;
+            border-color: #ec4899;
+            color: #be185d;
+            transform: translateY(-2px);
+        }
+        
+        .btn-icon {
+            font-size: 1.3em;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="menu-container">
+        <div class="title">⚔️ Web Battles</div>
+        <div class="subtitle">Select a game mode to begin</div>
+
+        <div class="button-group">
+            <button class="menu-btn btn-find" onclick="alert('Matchmaking server not yet connected! Check back later.')">
+                <span class="btn-icon">🔍</span> Find User
+            </button>
+
+            <a href="index.html" class="menu-btn btn-build">
+                <span class="btn-icon">🛠️</span> Teambuilder
+            </a>
+
+            <button class="menu-btn btn-random" onclick="alert('Generating random teams... (Feature coming soon!)')">
+                <span class="btn-icon">🎲</span> Random Play
+            </button>
+        </div>
+    </div>
+
+</body>
+</html>

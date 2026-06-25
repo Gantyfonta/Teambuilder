@@ -3,19 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokémon Teambuilder Prototype v4</title>
+    <title>Pokémon Teambuilder Prototype v5</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f3f4f6; /* Clean light gray background */
-            color: #1f2937; /* Dark text for readability */
+            background-color: #f3f4f6;
+            color: #1f2937;
             padding: 20px;
         }
         .container {
             max-width: 900px;
             margin: 0 auto;
         }
-        h1 { text-align: center; color: #111827; }
+        
+        /* Header & Navigation */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        h1 { margin: 0; color: #111827; }
+        .home-btn {
+            background: #e2e8f0;
+            color: #334155;
+            padding: 10px 18px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .home-btn:hover {
+            background: #cbd5e1;
+            transform: translateY(-2px);
+        }
 
         /* The 6 Team Slots */
         .team-container {
@@ -23,14 +47,14 @@
             grid-template-columns: repeat(3, 1fr);
             gap: 15px;
             margin-bottom: 30px;
-            background: #ffffff; /* White container */
+            background: #ffffff;
             padding: 20px;
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05); /* Soft shadow */
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
         .slot {
             position: relative;
-            min-height: 220px; /* Slightly taller to fit abilities */
+            min-height: 220px;
             border: 2px dashed #cbd5e1;
             border-radius: 8px;
             display: flex;
@@ -42,7 +66,7 @@
         }
         .slot.filled {
             border: 2px solid #3b82f6;
-            background: #eff6ff; /* Very faint blue tint for filled slots */
+            background: #eff6ff;
         }
         .remove-btn {
             position: absolute;
@@ -85,11 +109,10 @@
             color: #334155;
             font-size: 0.85em;
         }
-        
         .ability-select {
             font-weight: bold;
             border-color: #64748b;
-            margin-bottom: 5px; /* Separation between ability and moves */
+            margin-bottom: 5px;
         }
 
         /* Search Bar */
@@ -138,7 +161,10 @@
 <body>
 
 <div class="container">
-    <h1>⚔️ Teambuilder v4</h1>
+    <div class="header">
+        <h1>⚔️ Teambuilder v5</h1>
+        <a href="index.html" class="home-btn">🏠 Main Menu</a>
+    </div>
     
     <div class="team-container" id="team-slots">
         </div>
@@ -167,7 +193,7 @@
         "Bullet Punch": { type: "Steel", category: "Physical", power: 40, accuracy: 100 }
     };
 
-    // 2. Upgraded Pokemon Database (Now with Abilities!)
+    // 2. Pokemon Database
     const pokemonDatabase = [
         { id: 1, name: "Chewer", type: "Ground", sprite: "sprites/chewer.png", emoji: "🌍", abilities: ["Sand Veil", "Arena Trap"], learnset: ["Tackle", "Vine Whip", "Sludge Bomb"] },
         { id: 4, name: "Charmander", type: "Fire", sprite: "sprites/charmander.png", emoji: "🔥", abilities: ["Blaze", "Solar Power"], learnset: ["Tackle", "Flamethrower"] },
@@ -179,11 +205,25 @@
         { id: 212, name: "Scizor", type: "Bug/Steel", sprite: "sprites/scizor.png", emoji: "✂️", abilities: ["Swarm", "Technician", "Light Metal"], learnset: ["Tackle", "Bullet Punch"] }
     ];
 
-    // 3. State Management (Now tracks the selected ability)
+    // 3. State Management
     let currentTeam = [null, null, null, null, null, null]; 
-
     const teamContainer = document.getElementById('team-slots');
     const rosterContainer = document.getElementById('roster');
+
+    // --- NEW: LocalStorage Saving Functions ---
+    function saveTeam() {
+        // Convert our JavaScript array into a JSON string to save in the browser
+        localStorage.setItem('myShowdownTeam', JSON.stringify(currentTeam));
+    }
+
+    function loadTeam() {
+        // Check if there is saved data from a previous session
+        const savedData = localStorage.getItem('myShowdownTeam');
+        if (savedData) {
+            currentTeam = JSON.parse(savedData);
+        }
+    }
+    // ------------------------------------------
 
     // 4. Render the Team Slots
     function renderTeam() {
@@ -195,7 +235,6 @@
                 slotEl.className = 'slot filled';
                 const p = slotData.pokemon;
                 
-                // Build the Ability dropdown
                 let abilityOptionsHTML = `<option value="">Select Ability</option>`;
                 p.abilities.forEach(ability => {
                     const isSelected = slotData.ability === ability ? 'selected' : '';
@@ -203,7 +242,6 @@
                 });
                 const abilitySelectHTML = `<select class="ability-select" onchange="updateAbility(${slotIndex}, this.value)">${abilityOptionsHTML}</select>`;
 
-                // Build the 4 move dropdowns
                 let moveSelectsHTML = '';
                 for(let i = 0; i < 4; i++) {
                     let optionsHTML = `<option value="">Select Move ${i+1}</option>`;
@@ -234,10 +272,9 @@
         });
     }
 
-    // 5. Render the available Pokémon list
+    // 5. Render Roster
     function renderRoster(searchQuery = '') {
         rosterContainer.innerHTML = ''; 
-        
         const filteredPokemon = pokemonDatabase.filter(p => 
             p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
             p.type.toLowerCase().includes(searchQuery.toLowerCase())
@@ -257,44 +294,49 @@
         });
     }
 
-    // 6. Logic: Handle Search Input
+    // 6. Handle Search
     function handleSearch() {
         const query = document.getElementById('search-bar').value;
         renderRoster(query);
     }
 
-    // 7. Logic: Add to team (Now initializes with an empty ability string)
+    // 7. Add to team (Added saveTeam call)
     function addPokemon(pokemon) {
         const emptyIndex = currentTeam.findIndex(slot => slot === null);
         if (emptyIndex !== -1) {
             currentTeam[emptyIndex] = {
                 pokemon: pokemon,
-                ability: "", // Start with no ability selected
+                ability: "",
                 moves: ["", "", "", ""] 
             };
+            saveTeam();
             renderTeam();
         } else {
             alert("Your team is full! Remove a Pokémon first.");
         }
     }
 
-    // 8. Logic: Update a specific ability
+    // 8. Update ability (Added saveTeam call)
     function updateAbility(slotIndex, abilityName) {
         currentTeam[slotIndex].ability = abilityName;
+        saveTeam();
     }
 
-    // 9. Logic: Update a specific move
+    // 9. Update move (Added saveTeam call)
     function updateMove(slotIndex, moveIndex, moveName) {
         currentTeam[slotIndex].moves[moveIndex] = moveName;
+        saveTeam();
     }
 
-    // 10. Logic: Remove from team
+    // 10. Remove from team (Added saveTeam call)
     function removePokemon(index) {
         currentTeam[index] = null;
+        saveTeam();
         renderTeam();
     }
 
-    // Initialize the app
+    // --- Initialize the app ---
+    loadTeam(); // Check for saved data first!
     renderTeam();
     renderRoster();
 </script>

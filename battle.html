@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multiplayer Battle Arena</title>
+    <title>Multiplayer Battle Arena (Switching Update)</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -80,7 +80,7 @@
         }
         .start-btn:hover { background: #16a34a; }
 
-        /* HUD & Sprites */
+        /* HUD Layouts */
         .hud {
             background: rgba(255, 255, 255, 0.9);
             color: #333;
@@ -91,7 +91,6 @@
             width: 220px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        /* Top Left is Opponent, Bottom Right is Self */
         .opponent-hud { top: 30px; left: 40px; }
         .player-hud { bottom: 160px; right: 40px; }
         
@@ -126,7 +125,7 @@
         .opponent-sprite { top: 60px; right: 100px; }
         .player-sprite { bottom: 160px; left: 100px; transform: scaleX(-1); }
 
-        /* Controls Panel */
+        /* User Controls Bar Configuration */
         .ui-panel {
             position: absolute;
             bottom: 0;
@@ -139,8 +138,8 @@
         
         .dialogue-box {
             flex: 1;
-            padding: 20px;
-            font-size: 1.1em;
+            padding: 15px;
+            font-size: 1.05em;
             color: #1e293b;
             border-right: 2px solid #cbd5e1;
             font-family: monospace;
@@ -149,20 +148,21 @@
         }
 
         .moves-panel {
-            width: 400px;
+            width: 420px;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
-            gap: 10px;
-            padding: 15px;
+            grid-template-rows: auto;
+            gap: 6px;
+            padding: 10px;
             background: #f8fafc;
+            overflow-y: auto;
         }
 
         .move-btn {
             background: #e2e8f0;
             border: 2px solid #cbd5e1;
             border-radius: 6px;
-            font-size: 1em;
+            font-size: 0.95em;
             font-weight: bold;
             cursor: pointer;
             color: #334155;
@@ -171,14 +171,23 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            min-height: 45px;
         }
         .move-type {
-            font-size: 0.75em;
+            font-size: 0.7em;
             color: #64748b;
-            margin-top: 2px;
+            margin-top: 1px;
         }
         .move-btn:hover:not(:disabled) { background: #bfdbfe; border-color: #3b82f6; }
         .move-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .switch-menu-btn {
+            grid-column: span 2;
+            background: #3b82f6;
+            color: white;
+            border-color: #2563eb;
+        }
+        .switch-menu-btn:hover:not(:disabled) { background: #1d4ed8; }
     </style>
 </head>
 <body>
@@ -189,7 +198,7 @@
 
     <div id="start-screen">
         <div class="setup-box">
-            <h2 style="margin-top: 0;">⚔️ Online Battle Setup</h2>
+            <h2 style="margin-top: 0;">⚔️ Roster Battle Setup</h2>
             <label>Match Room ID:</label>
             <input type="text" id="room-input" class="input-field" value="arena1">
             
@@ -219,7 +228,7 @@
         <img src="" class="sprite player-sprite" id="player-sprite" alt="Player">
 
         <div class="ui-panel">
-            <div class="dialogue-box" id="dialogue">Connecting to database...</div>
+            <div class="dialogue-box" id="dialogue">Connecting to database network...</div>
             <div class="moves-panel" id="moves-panel"></div>
         </div>
     </div>
@@ -228,7 +237,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    // Embedded configuration parameters
     const firebaseConfig = {
         apiKey: "AIzaSyBr49eujOYIpnO_ysSBUfxFX3CMPPfkTPg",
         authDomain: "teambuilder-8563d.firebaseapp.com",
@@ -242,7 +250,6 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // --- Core Game Data Databases ---
     const typeChart = {
         "Normal": { "Ghost": 0, "Steel": 0.5 },
         "Fire": { "Fire": 0.5, "Water": 0.5, "Grass": 2.0, "Bug": 2.0, "Steel": 2.0, "Dragon": 0.5 },
@@ -272,18 +279,17 @@
         "Bullet Punch": { type: "Steel", power: 40 }
     };
 
-    // --- Multiplayer State Variables ---
-    let myRole = "p1";       // "p1" or "p2"
-    let oppRole = "p2";      // Opposite of role
+    let myRole = "p1";       
+    let oppRole = "p2";      
     let roomId = "arena1";
     let roomRef = null;
-    let localMonData = null; // Local active loaded slot
-    let currentMatchData = null; 
+    let localTeamSetup = null; 
+    let currentMatchData = null;
+    let viewingSwitchMenu = false; // Toggle view tracking parameter
 
     const bgMusic = document.getElementById('battle-music');
     bgMusic.volume = 0.3;
 
-    // Listen for connection setup click
     document.getElementById('connect-btn').onclick = function() {
         roomId = document.getElementById('room-input').value.trim() || "arena1";
         myRole = document.querySelector('input[name="role"]:checked').value;
@@ -297,72 +303,75 @@
         setupMultiplayerMatch();
     };
 
-    // Load active party element from storage
-    function getActiveTeambuilderMon() {
+    // Extracts up to 6 custom items out of Teambuilder local data pools
+    function loadLocalTeamStructure() {
         const savedData = localStorage.getItem('myShowdownTeam');
+        let parsedRoster = [];
         if (savedData) {
             try {
                 const team = JSON.parse(savedData);
-                const activeSlot = team.find(slot => slot !== null && slot.pokemon && slot.pokemon.stats);
-                if (activeSlot) {
-                    return {
-                        name: activeSlot.pokemon.name,
-                        type: activeSlot.pokemon.type,
-                        sprite: activeSlot.pokemon.sprite,
-                        hp: activeSlot.pokemon.stats.hp,
-                        maxHp: activeSlot.pokemon.stats.hp,
-                        atk: activeSlot.pokemon.stats.atk,
-                        def: activeSlot.pokemon.stats.def,
-                        spe: activeSlot.pokemon.stats.spe,
-                        moves: activeSlot.moves.filter(m => m !== ""),
-                        ready: true
-                    };
-                }
+                team.forEach(slot => {
+                    if (slot && slot.pokemon && slot.pokemon.stats) {
+                        parsedRoster.push({
+                            name: slot.pokemon.name,
+                            type: slot.pokemon.type,
+                            sprite: slot.pokemon.sprite,
+                            hp: slot.pokemon.stats.hp,
+                            maxHp: slot.pokemon.stats.hp,
+                            atk: slot.pokemon.stats.atk,
+                            def: slot.pokemon.stats.def,
+                            spe: slot.pokemon.stats.spe,
+                            moves: slot.moves.filter(m => m !== "")
+                        });
+                    }
+                });
             } catch (e) { console.error(e); }
         }
-        // Fallback placeholder if teambuilder data is unpopulated
+        
+        // Dynamic Fallback configuration if local storage data profiles remain unpopulated
+        if (parsedRoster.length === 0) {
+            if (myRole === "p1") {
+                parsedRoster = [
+                    { name: "Pikachu", type: "Electric", sprite: "sprites/pikachu.png", hp: 115, maxHp: 115, atk: 55, def: 40, spe: 90, moves: ["Thunderbolt", "Tackle"] },
+                    { name: "Snorlax", type: "Normal", sprite: "sprites/snorlax.png", hp: 260, maxHp: 260, atk: 110, def: 65, spe: 30, moves: ["Body Slam", "Tackle"] }
+                ];
+            } else {
+                parsedRoster = [
+                    { name: "Gengar", type: "Ghost/Poison", sprite: "sprites/gengar.png", hp: 140, maxHp: 140, atk: 65, def: 60, spe: 110, moves: ["Shadow Ball", "Sludge Bomb"] },
+                    { name: "Scizor", type: "Bug/Steel", sprite: "sprites/scizor.png", hp: 170, maxHp: 170, atk: 130, def: 100, spe: 65, moves: ["Bullet Punch", "Tackle"] }
+                ];
+            }
+        }
         return {
-            name: myRole === "p1" ? "Pikachu" : "Gengar",
-            type: myRole === "p1" ? "Electric" : "Ghost/Poison",
-            sprite: myRole === "p1" ? "sprites/pikachu.png" : "sprites/gengar.png",
-            hp: myRole === "p1" ? 115 : 140,
-            maxHp: myRole === "p1" ? 115 : 140,
-            atk: myRole === "p1" ? 55 : 95,
-            def: myRole === "p1" ? 40 : 60,
-            spe: myRole === "p1" ? 90 : 110,
-            moves: myRole === "p1" ? ["Thunderbolt", "Tackle"] : ["Shadow Ball", "Sludge Bomb"],
-            ready: true
+            team: parsedRoster,
+            activeIndex: 0
         };
     }
 
     function setupMultiplayerMatch() {
-        localMonData = getActiveTeambuilderMon();
+        localTeamSetup = loadLocalTeamStructure();
 
-        // If Host, wipe any previous broken rooms and seed new schema structure
         if (myRole === "p1") {
             set(roomRef, {
                 turn: 0,
                 lastTurnSummary: "Waiting for Player 2 to join...",
                 actions: { p1Move: "", p2Move: "" },
-                p1: localMonData
+                p1: localTeamSetup
             });
         } else {
-            // If Guest, inject local mon parameters into current room path
-            update(ref(db, `matches/${roomId}/${myRole}`), localMonData);
+            update(ref(db, `matches/${roomId}/${myRole}`), localTeamSetup);
         }
 
-        // Live database updates subscription loop
         onValue(roomRef, (snapshot) => {
             const data = snapshot.val();
             if (!data) return;
             currentMatchData = data;
 
-            // Trigger initialization logic once both parties connect
             if (data.turn === 0 && data.p1 && data.p2) {
                 if (myRole === "p1") {
                     update(roomRef, {
                         turn: 1,
-                        lastTurnSummary: "The match has begun!\nWhat will your Pokémon do?"
+                        lastTurnSummary: "The match has begun!\nWhat will your team do?"
                     });
                 }
                 return;
@@ -378,51 +387,71 @@
     function syncUserInterface(data) {
         const me = data[myRole];
         const opp = data[oppRole];
-
         if (!me || !opp) return;
 
-        // Render Status Data & Text Strings
-        document.getElementById('player-name').innerText = me.name;
-        document.getElementById('player-sprite').src = me.sprite;
-        document.getElementById('player-hp-text').innerText = `${me.hp} / ${me.maxHp}`;
-        const pPct = (me.hp / me.maxHp) * 100;
+        const activeMe = me.team[me.activeIndex];
+        const activeOpp = opp.team[opp.activeIndex];
+
+        // Core Render Execution Elements
+        document.getElementById('player-name').innerText = activeMe.name;
+        document.getElementById('player-sprite').src = activeMe.sprite;
+        document.getElementById('player-hp-text').innerText = `${activeMe.hp} / ${activeMe.maxHp}`;
+        const pPct = (activeMe.hp / activeMe.maxHp) * 100;
         document.getElementById('player-hp').style.width = `${pPct}%`;
 
-        document.getElementById('opp-name').innerText = opp.name;
-        document.getElementById('opp-sprite').src = opp.sprite;
-        document.getElementById('opp-hp-text').innerText = `${opp.hp} / ${opp.maxHp}`;
-        const oPct = (opp.hp / opp.maxHp) * 100;
+        document.getElementById('opp-name').innerText = activeOpp.name;
+        document.getElementById('opp-sprite').src = activeOpp.sprite;
+        document.getElementById('opp-hp-text').innerText = `${activeOpp.hp} / ${activeOpp.maxHp}`;
+        const oPct = (activeOpp.hp / activeOpp.maxHp) * 100;
         document.getElementById('opp-hp').style.width = `${oPct}%`;
 
         document.getElementById('dialogue').innerText = data.lastTurnSummary;
 
-        // Death checking loop prior to choice confirmation
-        if (me.hp <= 0 || opp.hp <= 0) {
+        // Evaluate Global Team Defeat Matrix
+        const myTeamWiped = me.team.every(mon => mon.hp <= 0);
+        const oppTeamWiped = opp.team.every(mon => mon.hp <= 0);
+
+        if (myTeamWiped || oppTeamWiped) {
             setButtonsDisabled(true);
-            buildEmptyMovePanel();
-            if (me.hp <= 0 && opp.hp <= 0) {
-                document.getElementById('dialogue').innerText += "\n\nIt's a double knockout! Mutual draw!";
-            } else if (me.hp <= 0) {
-                document.getElementById('dialogue').innerText += "\n\nYour Pokémon fainted! You lost!";
+            buildEmptyControlPanel();
+            if (myTeamWiped && oppTeamWiped) {
+                document.getElementById('dialogue').innerText += "\n\nAll combatants fainted! The match is a draw!";
+            } else if (myTeamWiped) {
+                document.getElementById('dialogue').innerText += "\n\nYou have no functional units remaining! You lost!";
             } else {
-                document.getElementById('dialogue').innerText += `\n\nEnemy ${opp.name} fainted! You win!`;
+                document.getElementById('dialogue').innerText += "\n\nThe enemy team has been eliminated! Victory is yours!";
             }
             return;
         }
 
-        // Lock button layouts conditionally depending on submission parameters
+        // Active Knockout Forced Switch Check Logic
+        if (activeMe.hp <= 0) {
+            document.getElementById('dialogue').innerText = `${activeMe.name} fainted! You must select a replacement unit to deploy.`;
+            viewingSwitchMenu = true; 
+            buildForcedSwitchPanel(me.team, me.activeIndex);
+            return;
+        }
+
+        // Processing Input Confirmation Locks
         const myActionKey = `${myRole}Move`;
         if (data.actions && data.actions[myActionKey]) {
-            document.getElementById('dialogue').innerText = "Waiting for your opponent to make a move...";
+            document.getElementById('dialogue').innerText = "Waiting for your opponent to confirm an action...";
             setButtonsDisabled(true);
+            buildEmptyControlPanel();
         } else {
-            buildActiveMovePanel(me.moves);
+            if (viewingSwitchMenu) {
+                buildSwitchMenuPanel(me.team, me.activeIndex, false);
+            } else {
+                buildActionMovePanel(activeMe.moves);
+            }
         }
     }
 
-    function buildActiveMovePanel(moveList) {
+    function buildActionMovePanel(moveList) {
         const panel = document.getElementById('moves-panel');
         panel.innerHTML = '';
+        
+        // Loop active moves
         for (let i = 0; i < 4; i++) {
             const btn = document.createElement('button');
             btn.className = 'move-btn';
@@ -430,31 +459,72 @@
             if (moveName && moveDatabase[moveName]) {
                 const type = moveDatabase[moveName].type;
                 btn.innerHTML = `<div>${moveName}</div><div class="move-type">${type}</div>`;
-                btn.onclick = () => submitMoveChoice(moveName);
+                btn.onclick = () => submitActionChoice(moveName);
             } else {
                 btn.innerText = "---";
                 btn.disabled = true;
             }
             panel.appendChild(btn);
         }
+
+        // Bench Swap interface transition toggle button
+        const switchToggle = document.createElement('button');
+        switchToggle.className = 'move-btn switch-menu-btn';
+        switchToggle.innerText = '🔄 Switch Pokémon';
+        switchToggle.onclick = () => {
+            viewingSwitchMenu = true;
+            syncUserInterface(currentMatchData);
+        };
+        panel.appendChild(switchToggle);
     }
 
-    function buildEmptyMovePanel() {
+    function buildSwitchMenuPanel(teamList, activeIdx, isForced) {
         const panel = document.getElementById('moves-panel');
         panel.innerHTML = '';
-        for (let i = 0; i < 4; i++) {
+
+        teamList.forEach((mon, index) => {
+            if (index === activeIdx) return; // Cannot switch to the currently active Pokemon
             const btn = document.createElement('button');
             btn.className = 'move-btn';
-            btn.innerText = "---";
-            btn.disabled = true;
+            btn.innerHTML = `<div>${mon.name}</div><div class="move-type">${mon.hp}/${mon.maxHp} HP</div>`;
+            
+            if (mon.hp <= 0) {
+                btn.disabled = true;
+            } else {
+                btn.onclick = () => {
+                    viewingSwitchMenu = false;
+                    submitActionChoice(`SWITCH:${index}`);
+                };
+            }
             panel.appendChild(btn);
+        });
+
+        // Cancel toggle button option (only visible if substitution sequence isn't forced)
+        if (!isForced) {
+            const backBtn = document.createElement('button');
+            backBtn.className = 'move-btn switch-menu-btn';
+            backBtn.innerText = '⬅️ Back to Moves';
+            backBtn.onclick = () => {
+                viewingSwitchMenu = false;
+                syncUserInterface(currentMatchData);
+            };
+            panel.appendChild(backBtn);
         }
     }
 
-    function submitMoveChoice(moveName) {
+    function buildForcedSwitchPanel(teamList, activeIdx) {
+        buildSwitchMenuPanel(teamList, activeIdx, true);
+    }
+
+    function buildEmptyControlPanel() {
+        const panel = document.getElementById('moves-panel');
+        panel.innerHTML = '';
+    }
+
+    function submitActionChoice(actionString) {
         setButtonsDisabled(true);
         const updatePayload = {};
-        updatePayload[`actions/${myRole}Move`] = moveName;
+        updatePayload[`actions/${myRole}Move`] = actionString;
         update(roomRef, updatePayload);
     }
 
@@ -462,50 +532,88 @@
         document.querySelectorAll('.move-btn').forEach(b => b.disabled = shouldDisable);
     }
 
-    // --- Core Mathematics Engine (Host Side Only Evaluates) ---
+    // --- Host Resolution Core Calculation Module ---
     function evaluateTurnCalculations(data) {
-        if (myRole !== "p1") return; // Guest ignores math evaluation loops
+        if (myRole !== "p1") return; 
         if (!data.actions || !data.actions.p1Move || !data.actions.p2Move) return;
 
         let p1 = JSON.parse(JSON.stringify(data.p1));
         let p2 = JSON.parse(JSON.stringify(data.p2));
-        const m1 = data.actions.p1Move;
-        const m2 = data.actions.p2Move;
+        const act1 = data.actions.p1Move;
+        const act2 = data.actions.p2Move;
 
-        // Speed check calculations to determine initiative sequence
-        let priorityQueue = [];
-        if (p1.spe >= p2.spe) {
-            priorityQueue = [{ attacker: p1, defender: p2, move: m1, role: 'p1' }, { attacker: p2, defender: p1, move: m2, role: 'p2' }];
-        } else {
-            priorityQueue = [{ attacker: p2, defender: p1, move: m2, role: 'p2' }, { attacker: p1, defender: p2, move: m1, role: 'p1' }];
+        let turnLog = "";
+
+        // --- Phase 1: High Priority Switch Execution Blocks ---
+        let p1Switched = false;
+        let p2Switched = false;
+
+        if (act1.startsWith("SWITCH:")) {
+            const nextIdx = parseInt(act1.split(":"));
+            const oldName = p1.team[p1.activeIndex].name;
+            p1.activeIndex = nextIdx;
+            turnLog += `${oldName} was recalled! Go, ${p1.team[p1.activeIndex].name}!\n`;
+            p1Switched = true;
         }
 
-        let summary = "";
-
-        // Action Loop 1
-        let first = priorityQueue;
-        let res1 = computeDamageImpact(first.attacker, first.defender, first.move);
-        first.defender.hp = Math.max(0, first.defender.hp - res1.damage);
-        summary += `${first.attacker.name} used ${first.move}!\n`;
-        summary += res1.text + `It dealt ${res1.damage} damage.\n\n`;
-
-        // Action Loop 2 (Only fires if defender remains conscious)
-        let second = priorityQueue;
-        if (first.defender.hp > 0) {
-            let res2 = computeDamageImpact(second.attacker, second.defender, second.move);
-            second.defender.hp = Math.max(0, second.defender.hp - res2.damage);
-            summary += `${second.attacker.name} used ${second.move}!\n`;
-            summary += res2.text + `It dealt ${res2.damage} damage.`;
-        } else {
-            summary += `${second.attacker.name} was unable to move!`;
+        if (act2.startsWith("SWITCH:")) {
+            const nextIdx = parseInt(act2.split(":"));
+            const oldName = p2.team[p2.activeIndex].name;
+            p2.activeIndex = nextIdx;
+            turnLog += `${oldName} was recalled! Go, ${p2.team[p2.activeIndex].name}!\n`;
+            p2Switched = true;
         }
 
-        // Post-Turn DB update synchronization routine
+        if (p1Switched || p2Switched) turnLog += "\n";
+
+        // Grab active pointers post switch adjustments
+        let mon1 = p1.team[p1.activeIndex];
+        let mon2 = p2.team[p2.activeIndex];
+
+        // --- Phase 2: Offensive Combat Attack Configurations ---
+        const p1Attacking = !p1Switched;
+        const p2Attacking = !p2Switched;
+
+        if (p1Attacking && p2Attacking) {
+            // Speed Priority Initialization Check Matrix
+            if (mon1.spe >= mon2.spe) {
+                // Strike Order Sequence: P1 then P2
+                executeAttack(mon1, mon2, act1);
+                if (mon2.hp > 0) {
+                    executeAttack(mon2, mon1, act2);
+                } else {
+                    turnLog += `${mon2.name} fainted and was unable to strike!`;
+                }
+            } else {
+                // Strike Order Sequence: P2 then P1
+                executeAttack(mon2, mon1, act2);
+                if (mon1.hp > 0) {
+                    executeAttack(mon1, mon2, act1);
+                } else {
+                    turnLog += `${mon1.name} fainted and was unable to strike!`;
+                }
+            }
+        } else if (p1Attacking && !p2Attacking) {
+            // Player 1 attacks target that skipped turn via deployment switch
+            executeAttack(mon1, mon2, act1);
+        } else if (p2Attacking && !p1Attacking) {
+            // Player 2 attacks target that skipped turn via deployment switch
+            executeAttack(mon2, mon1, act2);
+        }
+
+        function executeAttack(attacker, defender, moveName) {
+            let resolution = computeDamageImpact(attacker, defender, moveName);
+            defender.hp = Math.max(0, defender.hp - resolution.damage);
+            turnLog += `${attacker.name} used ${moveName}!\n`;
+            turnLog += resolution.text + `It dealt ${resolution.damage} damage.\n\n`;
+        }
+
+        // Sync and push changes up to database path nodes
         update(roomRef, {
             p1: p1,
             p2: p2,
             actions: { p1Move: "", p2Move: "" },
-            lastTurnSummary: summary.trim(),
+            lastTurnSummary: turnLog.trim(),
             turn: data.turn + 1
         });
     }

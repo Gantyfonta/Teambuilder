@@ -3,179 +3,187 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Battle Arena</title>
+    <title>Pokémon Teambuilder Prototype v5</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #1e293b;
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            color: #fff;
+            background-color: #f3f4f6;
+            color: #1f2937;
+            padding: 20px;
         }
-
-        .battle-container {
-            width: 800px;
-            height: 500px;
-            background: linear-gradient(to bottom, #7dd3fc, #e0f2fe, #dcfce7, #86efac); 
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            position: relative;
-            overflow: hidden;
-            border: 4px solid #334155;
-            display: none; 
-        }
-
-        #start-screen {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(15, 23, 42, 0.9);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
         }
         
-        .start-btn {
-            padding: 15px 30px;
-            font-size: 1.5em;
+        /* Header & Navigation */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        h1 { margin: 0; color: #111827; }
+        .home-btn {
+            background: #e2e8f0;
+            color: #334155;
+            padding: 10px 18px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .home-btn:hover {
+            background: #cbd5e1;
+            transform: translateY(-2px);
+        }
+
+        /* The 6 Team Slots */
+        .team-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .slot {
+            position: relative;
+            min-height: 220px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #f8fafc;
+            padding: 15px;
+        }
+        .slot.filled {
+            border: 2px solid #3b82f6;
+            background: #eff6ff;
+        }
+        .remove-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
             background: #ef4444;
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
             cursor: pointer;
             font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             transition: background 0.2s;
         }
-        .start-btn:hover { background: #dc2626; }
-
-        .hud {
-            background: rgba(255, 255, 255, 0.9);
-            color: #333;
-            padding: 10px 15px;
-            border-radius: 8px;
-            border: 2px solid #cbd5e1;
-            position: absolute;
-            width: 220px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .opponent-hud { top: 30px; left: 40px; }
-        .player-hud { bottom: 160px; right: 40px; }
+        .remove-btn:hover { background: #dc2626; }
         
-        .hp-text {
-            font-size: 0.8em;
-            color: #475569;
-            text-align: right;
-            margin-top: 2px;
-        }
-        .hp-bar-container {
-            width: 100%;
-            height: 10px;
-            background: #cbd5e1;
-            border-radius: 5px;
-            margin-top: 5px;
-            overflow: hidden;
-        }
-        .hp-bar {
-            height: 100%;
-            background: #22c55e; 
-            width: 100%;
-            transition: width 0.4s ease-out;
-        }
-
-        .sprite {
-            position: absolute;
-            width: 160px;
-            height: 160px;
+        .sprite-img {
+            width: 96px; 
+            height: 96px;
             object-fit: contain;
-            image-rendering: pixelated;
+            image-rendering: pixelated; 
         }
-        .opponent-sprite { top: 60px; right: 100px; }
-        .player-sprite { bottom: 160px; left: 100px; transform: scaleX(-1); }
 
-        .ui-panel {
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            height: 140px;
-            background: #ffffff;
-            border-top: 4px solid #334155;
+        .dropdowns-container {
             display: flex;
+            flex-direction: column;
+            gap: 5px;
+            width: 100%;
+            margin-top: 10px;
         }
-        
-        .dialogue-box {
-            flex: 1;
-            padding: 20px;
-            font-size: 1.2em;
-            color: #1e293b;
-            border-right: 2px solid #cbd5e1;
-            font-family: monospace;
-            white-space: pre-line;
-        }
-
-        .moves-panel {
-            width: 400px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
-            gap: 10px;
-            padding: 15px;
-            background: #f8fafc;
-        }
-
-        .move-btn {
-            background: #e2e8f0;
-            border: 2px solid #cbd5e1;
-            border-radius: 6px;
-            font-size: 1em;
-            font-weight: bold;
-            cursor: pointer;
+        select {
+            padding: 4px;
+            border-radius: 4px;
+            border: 1px solid #94a3b8;
+            background: #ffffff;
             color: #334155;
-            transition: all 0.1s;
+            font-size: 0.85em;
         }
-        .move-btn:hover:not(:disabled) { background: #bfdbfe; border-color: #3b82f6; }
-        .move-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .ability-select {
+            font-weight: bold;
+            border-color: #64748b;
+            margin-bottom: 5px;
+        }
+
+        /* Search Bar */
+        .search-container {
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #search-bar {
+            width: 100%;
+            max-width: 400px;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #1f2937;
+            font-size: 1em;
+        }
+
+        /* The Available Roster */
+        .roster {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 15px;
+        }
+        .pokemon-card {
+            background: #ffffff;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .pokemon-card:hover {
+            transform: translateY(-3px);
+            border: 2px solid #3b82f6;
+        }
+        .type {
+            font-size: 0.8em;
+            color: #64748b;
+        }
+        .stats-text {
+            font-size: 0.75em;
+            color: #ef4444;
+            margin-top: 4px;
+        }
     </style>
 </head>
 <body>
 
-    <audio id="battle-music" loop>
-        <source src="battle-theme.mp3" type="audio/mpeg">
-    </audio>
-
-    <div id="start-screen">
-        <h1 style="margin-bottom: 20px;">Ready to Battle?</h1>
-        <button class="start-btn" onclick="startBattle()">BATTLE!</button>
+<div class="container">
+    <div class="header">
+        <h1>⚔️ Teambuilder v5 (Fixed)</h1>
+        <a href="index.html" class="home-btn">🏠 Main Menu</a>
     </div>
-
-    <div class="battle-container" id="battle-arena">
-        <div class="hud opponent-hud">
-            <strong id="opp-name">Wild Gengar</strong>
-            <div class="hp-bar-container"><div class="hp-bar" id="opp-hp"></div></div>
-            <div class="hp-text" id="opp-hp-text">140 / 140</div>
+    
+    <div class="team-container" id="team-slots">
         </div>
-        <img src="sprites/gengar.png" class="sprite opponent-sprite" id="opp-sprite" alt="Opponent">
 
-        <div class="hud player-hud">
-            <strong id="player-name">Loading...</strong>
-            <div class="hp-bar-container"><div class="hp-bar" id="player-hp"></div></div>
-            <div class="hp-text" id="player-hp-text">100 / 100</div>
-        </div>
-        <img src="" class="sprite player-sprite" id="player-sprite" alt="Player">
-
-        <div class="ui-panel">
-            <div class="dialogue-box" id="dialogue">What will your Pokémon do?</div>
-            <div class="moves-panel" id="moves-panel"></div>
-        </div>
+    <div class="search-container">
+        <h3>Available Pokémon</h3>
+        <input type="text" id="search-bar" placeholder="Search Pokémon..." onkeyup="handleSearch()">
     </div>
+    
+    <div class="roster" id="roster">
+        </div>
+</div>
 
 <script>
-    const bgMusic = document.getElementById('battle-music');
-    bgMusic.volume = 0.4;
-
     const moveDatabase = {
         "Tackle": { type: "Normal", power: 40 },
         "Vine Whip": { type: "Grass", power: 45 },
@@ -189,188 +197,154 @@
         "Bullet Punch": { type: "Steel", power: 40 }
     };
 
-    let playerMon = null;
-    let oppMon = {
-        name: "Wild Gengar",
-        sprite: "sprites/gengar.png",
-        stats: { hp: 140, maxHp: 140, atk: 95, def: 60, spe: 110 },
-        moves: ["Shadow Ball", "Sludge Bomb", "Tackle"]
-    };
+    const pokemonDatabase = [
+        { id: 1, name: "Chewer", type: "Ground", sprite: "sprites/chewer.png", emoji: "🌍", abilities: ["Sand Veil", "Arena Trap"], stats: { hp: 160, atk: 85, def: 95, spe: 45 }, learnset: ["Tackle", "Vine Whip", "Sludge Bomb"] },
+        { id: 4, name: "Charmander", type: "Fire", sprite: "sprites/charmander.png", emoji: "🔥", abilities: ["Blaze", "Solar Power"], stats: { hp: 119, atk: 52, def: 43, spe: 65 }, learnset: ["Tackle", "Flamethrower"] },
+        { id: 7, name: "Squirtle", type: "Water", sprite: "sprites/squirtle.png", emoji: "💧", abilities: ["Torrent", "Rain Dish"], stats: { hp: 124, atk: 48, def: 65, spe: 43 }, learnset: ["Tackle", "Water Gun"] },
+        { id: 25, name: "Pikachu", type: "Electric", sprite: "sprites/pikachu.png", emoji: "⚡", abilities: ["Static", "Lightning Rod"], stats: { hp: 115, atk: 55, def: 40, spe: 90 }, learnset: ["Tackle", "Thunderbolt"] },
+        { id: 94, name: "Gengar", type: "Ghost/Poison", sprite: "sprites/gengar.png", emoji: "👻", abilities: ["Cursed Body"], stats: { hp: 140, atk: 95, def: 60, spe: 110 }, learnset: ["Shadow Ball", "Sludge Bomb"] },
+        { id: 143, name: "Snorlax", type: "Normal", sprite: "sprites/snorlax.png", emoji: "💤", abilities: ["Immunity", "Thick Fat", "Gluttony"], stats: { hp: 240, atk: 110, def: 65, spe: 30 }, learnset: ["Tackle", "Body Slam"] },
+        { id: 149, name: "Dragonite", type: "Dragon/Flying", sprite: "sprites/dragonite.png", emoji: "🐉", abilities: ["Inner Focus", "Multiscale"], stats: { hp: 171, atk: 134, def: 95, spe: 80 }, learnset: ["Tackle", "Outrage"] },
+        { id: 212, name: "Scizor", type: "Bug/Steel", sprite: "sprites/scizor.png", emoji: "✂️", abilities: ["Swarm", "Technician", "Light Metal"], stats: { hp: 150, atk: 130, def: 100, spe: 65 }, learnset: ["Tackle", "Bullet Punch"] }
+    ];
 
-    function startBattle() {
-        document.getElementById('start-screen').style.display = 'none';
-        document.getElementById('battle-arena').style.display = 'block';
-        bgMusic.play();
-        initializePlayerTeam();
+    let currentTeam = [null, null, null, null, null, null]; 
+    const teamContainer = document.getElementById('team-slots');
+    const rosterContainer = document.getElementById('roster');
+
+    function saveTeam() {
+        localStorage.setItem('myShowdownTeam', JSON.stringify(currentTeam));
     }
 
-    function initializePlayerTeam() {
+    // --- CRITICAL FIX: Safe Schema Verification ---
+    function loadTeam() {
         const savedData = localStorage.getItem('myShowdownTeam');
         if (savedData) {
             try {
-                const team = JSON.parse(savedData);
-                // Safe lookup: ensure slot has a pokemon AND stats data
-                const activeSlot = team.find(slot => slot !== null && slot.pokemon && slot.pokemon.stats);
-                if (activeSlot) {
-                    playerMon = {
-                        name: activeSlot.pokemon.name,
-                        sprite: activeSlot.pokemon.sprite,
-                        stats: { 
-                            hp: activeSlot.pokemon.stats.hp, 
-                            maxHp: activeSlot.pokemon.stats.hp, 
-                            atk: activeSlot.pokemon.stats.atk, 
-                            def: activeSlot.pokemon.stats.def, 
-                            spe: activeSlot.pokemon.stats.spe 
-                        },
-                        moves: activeSlot.moves.filter(m => m !== "")
-                    };
+                const parsedData = JSON.parse(savedData);
+                // If any slot has a pokemon but no stats, wipe it to prevent layout crashes
+                const isCorrupted = parsedData.some(slot => slot && slot.pokemon && !slot.pokemon.stats);
+                if (isCorrupted) {
+                    localStorage.removeItem('myShowdownTeam');
+                    currentTeam = [null, null, null, null, null, null];
+                } else {
+                    currentTeam = parsedData;
                 }
             } catch (e) {
-                console.error("Error reading team:", e);
+                currentTeam = [null, null, null, null, null, null];
             }
         }
-
-        // --- DEFENSIVE FALLBACK: Safety feature if Teambuilder is empty ---
-        if (!playerMon) {
-            playerMon = {
-                name: "Pikachu (Buddy)",
-                sprite: "sprites/pikachu.png",
-                stats: { hp: 115, maxHp: 115, atk: 55, def: 40, spe: 90 },
-                moves: ["Thunderbolt", "Tackle"]
-            };
-        }
-
-        document.getElementById('player-name').innerText = playerMon.name;
-        document.getElementById('player-sprite').src = playerMon.sprite;
-        updateHpBars();
-        buildMovePanel();
-        document.getElementById('dialogue').innerText = `Go! ${playerMon.name}!`;
     }
 
-    function buildMovePanel() {
-        const movesPanel = document.getElementById('moves-panel');
-        movesPanel.innerHTML = ''; 
-
-        for (let i = 0; i < 4; i++) {
-            const btn = document.createElement('button');
-            btn.className = 'move-btn';
-            const moveName = playerMon.moves[i];
-            btn.innerText = moveName || "---";
+    function renderTeam() {
+        teamContainer.innerHTML = '';
+        currentTeam.forEach((slotData, slotIndex) => {
+            const slotEl = document.createElement('div');
             
-            if (moveName) {
-                btn.onclick = () => handleTurnSequence(moveName);
+            if (slotData && slotData.pokemon && slotData.pokemon.stats) {
+                slotEl.className = 'slot filled';
+                const p = slotData.pokemon;
+                
+                let abilityOptionsHTML = `<option value="">Select Ability</option>`;
+                p.abilities.forEach(ability => {
+                    const isSelected = slotData.ability === ability ? 'selected' : '';
+                    abilityOptionsHTML += `<option value="${ability}" ${isSelected}>${ability}</option>`;
+                });
+                const abilitySelectHTML = `<select class="ability-select" onchange="updateAbility(${slotIndex}, this.value)">${abilityOptionsHTML}</select>`;
+
+                let moveSelectsHTML = '';
+                for(let i = 0; i < 4; i++) {
+                    let optionsHTML = `<option value="">Select Move ${i+1}</option>`;
+                    p.learnset.forEach(moveName => {
+                        const isSelected = slotData.moves[i] === moveName ? 'selected' : '';
+                        const moveInfo = moveDatabase[moveName];
+                        const powerText = moveInfo && moveInfo.power ? ` (BP: ${moveInfo.power})` : '';
+                        optionsHTML += `<option value="${moveName}" ${isSelected}>${moveName}${powerText}</option>`;
+                    });
+                    
+                    moveSelectsHTML += `<select onchange="updateMove(${slotIndex}, ${i}, this.value)">${optionsHTML}</select>`;
+                }
+
+                slotEl.innerHTML = `
+                    <button class="remove-btn" onclick="removePokemon(${slotIndex})" title="Remove Pokémon">X</button>
+                    <img src="${p.sprite}" alt="${p.name}" class="sprite-img" onerror="this.outerHTML='<div style=\\'font-size: 3em; margin-bottom: 10px;\\'>${p.emoji}</div>'">
+                    <strong>${p.name}</strong>
+                    <div style="font-size: 0.75em; color: #64748b;">A:${p.stats.atk} D:${p.stats.def} S:${p.stats.spe}</div>
+                    <div class="dropdowns-container">
+                        ${abilitySelectHTML}
+                        ${moveSelectsHTML}
+                    </div>
+                `;
             } else {
-                btn.disabled = true;
+                slotEl.className = 'slot';
+                slotEl.innerHTML = `<span style="color: #94a3b8;">Empty Slot</span>`;
             }
-            movesPanel.appendChild(btn);
-        }
+            teamContainer.appendChild(slotEl);
+        });
     }
 
-    function setButtonsDisabled(shouldDisable) {
-        const buttons = document.querySelectorAll('.move-btn');
-        buttons.forEach(btn => btn.disabled = shouldDisable);
+    function renderRoster(searchQuery = '') {
+        rosterContainer.innerHTML = ''; 
+        const filteredPokemon = pokemonDatabase.filter(p => 
+            p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+            p.type.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+        filteredPokemon.forEach(pokemon => {
+            const card = document.createElement('div');
+            card.className = 'pokemon-card';
+            card.innerHTML = `
+                <img src="${pokemon.sprite}" alt="${pokemon.name}" class="sprite-img" onerror="this.outerHTML='<div style=\\'font-size: 3em; margin-bottom: 10px;\\'>${pokemon.emoji}</div>'">
+                <br>
+                <strong>${pokemon.name}</strong>
+                <div class="type">${pokemon.type}</div>
+                <div class="stats-text">HP:${pokemon.stats.hp} A:${pokemon.stats.atk} D:${pokemon.stats.def} S:${pokemon.stats.spe}</div>
+            `;
+            card.onclick = () => addPokemon(pokemon);
+            rosterContainer.appendChild(card);
+        });
     }
 
-    function updateHpBars() {
-        const playerPct = (playerMon.stats.hp / playerMon.stats.maxHp) * 100;
-        const pBar = document.getElementById('player-hp');
-        pBar.style.width = `${playerPct}%`;
-        pBar.style.background = playerPct < 20 ? '#ef4444' : playerPct < 50 ? '#eab308' : '#22c55e';
-        document.getElementById('player-hp-text').innerText = `${playerMon.stats.hp} / ${playerMon.stats.maxHp}`;
-
-        const oppPct = (oppMon.stats.hp / oppMon.stats.maxHp) * 100;
-        const oBar = document.getElementById('opp-hp');
-        oBar.style.width = `${oppPct}%`;
-        oBar.style.background = oppPct < 20 ? '#ef4444' : oppPct < 50 ? '#eab308' : '#22c55e';
-        document.getElementById('opp-hp-text').innerText = `${oppMon.stats.hp} / ${oppMon.stats.maxHp}`;
+    function handleSearch() {
+        const query = document.getElementById('search-bar').value;
+        renderRoster(query);
     }
 
-    function calculateDamage(attacker, defender, moveName) {
-        const moveData = moveDatabase[moveName];
-        if (!moveData) return 0;
-
-        const basePower = moveData.power;
-        const attackStat = attacker.stats.atk;
-        const defenseStat = defender.stats.def;
-
-        const baseDamage = Math.floor((((22 * basePower * attackStat) / defenseStat) / 50) + 2);
-        const randomRoll = (Math.floor(Math.random() * 16) + 85) / 100;
-        
-        return Math.max(1, Math.floor(baseDamage * randomRoll));
-    }
-
-    function handleTurnSequence(playerMove) {
-        setButtonsDisabled(true); 
-        const dialogue = document.getElementById('dialogue');
-
-        const randomIdx = Math.floor(Math.random() * oppMon.moves.length);
-        const oppMove = oppMon.moves[randomIdx];
-
-        let primaryAttacker, secondaryAttacker;
-        let primaryMove, secondaryMove;
-        let pIsUser = true;
-
-        if (playerMon.stats.spe >= oppMon.stats.spe) {
-            primaryAttacker = playerMon; primaryMove = playerMove;
-            secondaryAttacker = oppMon; secondaryMove = oppMove;
-            pIsUser = true;
+    function addPokemon(pokemon) {
+        const emptyIndex = currentTeam.findIndex(slot => slot === null);
+        if (emptyIndex !== -1) {
+            currentTeam[emptyIndex] = {
+                pokemon: pokemon,
+                ability: "",
+                moves: ["", "", "", ""] 
+            };
+            saveTeam();
+            renderTeam();
         } else {
-            primaryAttacker = oppMon; primaryMove = oppMove;
-            secondaryAttacker = playerMon; secondaryMove = playerMove;
-            pIsUser = false;
+            alert("Your team is full! Remove a Pokémon first.");
         }
-
-        dialogue.innerText = `${primaryAttacker.name} used ${primaryMove}!`;
-        
-        setTimeout(() => {
-            const dmg1 = calculateDamage(primaryAttacker, secondaryAttacker, primaryMove);
-            secondaryAttacker.stats.hp = Math.max(0, secondaryAttacker.stats.hp - dmg1);
-            updateHpBars();
-            dialogue.innerText = `${primaryAttacker.name} used ${primaryMove}!\nIt dealt ${dmg1} damage.`;
-
-            if (secondaryAttacker.stats.hp === 0) {
-                handleFaintState(secondaryAttacker, pIsUser);
-                return; 
-            }
-
-            setTimeout(() => {
-                dialogue.innerText = `${secondaryAttacker.name} used ${secondaryMove}!`;
-
-                setTimeout(() => {
-                    const dmg2 = calculateDamage(secondaryAttacker, primaryAttacker, secondaryMove);
-                    primaryAttacker.stats.hp = Math.max(0, primaryAttacker.stats.hp - dmg2);
-                    updateHpBars();
-                    dialogue.innerText = `${secondaryAttacker.name} used ${secondaryMove}!\nIt dealt ${dmg2} damage.`;
-
-                    if (primaryAttacker.stats.hp === 0) {
-                        handleFaintState(primaryAttacker, !pIsUser);
-                        return;
-                    }
-
-                    setTimeout(() => {
-                        dialogue.innerText = "What will your Pokémon do?";
-                        buildMovePanel(); 
-                    }, 1800);
-
-                }, 1400);
-            }, 1800);
-
-        }, 1400);
     }
 
-    function handleFaintState(faintedMon, userFainted) {
-        const dialogue = document.getElementById('dialogue');
-        setTimeout(() => {
-            dialogue.innerText = `${faintedMon.name} fainted!`;
-            if (userFainted) {
-                document.getElementById('player-sprite').style.display = 'none';
-                setTimeout(() => dialogue.innerText = "You lost! Better luck next time.", 1500);
-            } else {
-                document.getElementById('opp-sprite').style.display = 'none';
-                setTimeout(() => dialogue.innerText = "You defeated Wild Gengar! You win!", 1500);
-            }
-        }, 1200);
+    function updateAbility(slotIndex, abilityName) {
+        currentTeam[slotIndex].ability = abilityName;
+        saveTeam();
     }
+
+    function updateMove(slotIndex, moveIndex, moveName) {
+        currentTeam[slotIndex].moves[moveIndex] = moveName;
+        saveTeam();
+    }
+
+    function removePokemon(index) {
+        currentTeam[index] = null;
+        saveTeam();
+        renderTeam();
+    }
+
+    loadTeam(); 
+    renderTeam();
+    renderRoster();
 </script>
+
 </body>
 </html>

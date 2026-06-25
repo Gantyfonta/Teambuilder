@@ -156,13 +156,18 @@
             font-size: 0.8em;
             color: #64748b;
         }
+        .stats-text {
+            font-size: 0.75em;
+            color: #ef4444;
+            margin-top: 4px;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header">
-        <h1>⚔️ Teambuilder v5</h1>
+        <h1>⚔️ Teambuilder v5 (With Stats)</h1>
         <a href="index.html" class="home-btn">🏠 Main Menu</a>
     </div>
     
@@ -179,53 +184,49 @@
 </div>
 
 <script>
-    // 1. Move Database 
+    // Move Database 
     const moveDatabase = {
-        "Tackle": { type: "Normal", category: "Physical", power: 40, accuracy: 100 },
-        "Vine Whip": { type: "Grass", category: "Physical", power: 45, accuracy: 100 },
-        "Sludge Bomb": { type: "Poison", category: "Special", power: 90, accuracy: 100 },
-        "Flamethrower": { type: "Fire", category: "Special", power: 90, accuracy: 100 },
-        "Water Gun": { type: "Water", category: "Special", power: 40, accuracy: 100 },
-        "Thunderbolt": { type: "Electric", category: "Special", power: 90, accuracy: 100 },
-        "Shadow Ball": { type: "Ghost", category: "Special", power: 80, accuracy: 100 },
-        "Body Slam": { type: "Normal", category: "Physical", power: 85, accuracy: 100 },
-        "Outrage": { type: "Dragon", category: "Physical", power: 120, accuracy: 100 },
-        "Bullet Punch": { type: "Steel", category: "Physical", power: 40, accuracy: 100 }
+        "Tackle": { type: "Normal", power: 40 },
+        "Vine Whip": { type: "Grass", power: 45 },
+        "Sludge Bomb": { type: "Poison", power: 90 },
+        "Flamethrower": { type: "Fire", power: 90 },
+        "Water Gun": { type: "Water", power: 40 },
+        "Thunderbolt": { type: "Electric", power: 90 },
+        "Shadow Ball": { type: "Ghost", power: 80 },
+        "Body Slam": { type: "Normal", power: 85 },
+        "Outrage": { type: "Dragon", power: 120 },
+        "Bullet Punch": { type: "Steel", power: 40 }
     };
 
-    // 2. Pokemon Database
+    // Upgraded Pokemon Database (Now featuring Attack, Defense, Speed, and MaxHP)
     const pokemonDatabase = [
-        { id: 1, name: "Chewer", type: "Ground", sprite: "sprites/chewer.png", emoji: "🌍", abilities: ["Sand Veil", "Arena Trap"], learnset: ["Tackle", "Vine Whip", "Sludge Bomb"] },
-        { id: 4, name: "Charmander", type: "Fire", sprite: "sprites/charmander.png", emoji: "🔥", abilities: ["Blaze", "Solar Power"], learnset: ["Tackle", "Flamethrower"] },
-        { id: 7, name: "Squirtle", type: "Water", sprite: "sprites/squirtle.png", emoji: "💧", abilities: ["Torrent", "Rain Dish"], learnset: ["Tackle", "Water Gun"] },
-        { id: 25, name: "Pikachu", type: "Electric", sprite: "sprites/pikachu.png", emoji: "⚡", abilities: ["Static", "Lightning Rod"], learnset: ["Tackle", "Thunderbolt"] },
-        { id: 94, name: "Gengar", type: "Ghost/Poison", sprite: "sprites/gengar.png", emoji: "👻", abilities: ["Cursed Body"], learnset: ["Shadow Ball", "Sludge Bomb"] },
-        { id: 143, name: "Snorlax", type: "Normal", sprite: "sprites/snorlax.png", emoji: "💤", abilities: ["Immunity", "Thick Fat", "Gluttony"], learnset: ["Tackle", "Body Slam"] },
-        { id: 149, name: "Dragonite", type: "Dragon/Flying", sprite: "sprites/dragonite.png", emoji: "🐉", abilities: ["Inner Focus", "Multiscale"], learnset: ["Tackle", "Outrage"] },
-        { id: 212, name: "Scizor", type: "Bug/Steel", sprite: "sprites/scizor.png", emoji: "✂️", abilities: ["Swarm", "Technician", "Light Metal"], learnset: ["Tackle", "Bullet Punch"] }
+        { id: 1, name: "Chewer", type: "Ground", sprite: "sprites/chewer.png", emoji: "🌍", abilities: ["Sand Veil", "Arena Trap"], stats: { hp: 160, atk: 85, def: 95, spe: 45 }, learnset: ["Tackle", "Vine Whip", "Sludge Bomb"] },
+        { id: 4, name: "Charmander", type: "Fire", sprite: "sprites/charmander.png", emoji: "🔥", abilities: ["Blaze", "Solar Power"], stats: { hp: 119, atk: 52, def: 43, spe: 65 }, learnset: ["Tackle", "Flamethrower"] },
+        { id: 7, name: "Squirtle", type: "Water", sprite: "sprites/squirtle.png", emoji: "💧", abilities: ["Torrent", "Rain Dish"], stats: { hp: 124, atk: 48, def: 65, spe: 43 }, learnset: ["Tackle", "Water Gun"] },
+        { id: 25, name: "Pikachu", type: "Electric", sprite: "sprites/pikachu.png", emoji: "⚡", abilities: ["Static", "Lightning Rod"], stats: { hp: 115, atk: 55, def: 40, spe: 90 }, learnset: ["Tackle", "Thunderbolt"] },
+        { id: 94, name: "Gengar", type: "Ghost/Poison", sprite: "sprites/gengar.png", emoji: "👻", abilities: ["Cursed Body"], stats: { hp: 140, atk: 95, def: 60, spe: 110 }, learnset: ["Shadow Ball", "Sludge Bomb"] },
+        { id: 143, name: "Snorlax", type: "Normal", sprite: "sprites/snorlax.png", emoji: "💤", abilities: ["Immunity", "Thick Fat", "Gluttony"], stats: { hp: 240, atk: 110, def: 65, spe: 30 }, learnset: ["Tackle", "Body Slam"] },
+        { id: 149, name: "Dragonite", type: "Dragon/Flying", sprite: "sprites/dragonite.png", emoji: "🐉", abilities: ["Inner Focus", "Multiscale"], stats: { hp: 171, atk: 134, def: 95, spe: 80 }, learnset: ["Tackle", "Outrage"] },
+        { id: 212, name: "Scizor", type: "Bug/Steel", sprite: "sprites/scizor.png", emoji: "✂️", abilities: ["Swarm", "Technician", "Light Metal"], stats: { hp: 150, atk: 130, def: 100, spe: 65 }, learnset: ["Tackle", "Bullet Punch"] }
     ];
 
-    // 3. State Management
+    // State Management
     let currentTeam = [null, null, null, null, null, null]; 
     const teamContainer = document.getElementById('team-slots');
     const rosterContainer = document.getElementById('roster');
 
-    // --- NEW: LocalStorage Saving Functions ---
     function saveTeam() {
-        // Convert our JavaScript array into a JSON string to save in the browser
         localStorage.setItem('myShowdownTeam', JSON.stringify(currentTeam));
     }
 
     function loadTeam() {
-        // Check if there is saved data from a previous session
         const savedData = localStorage.getItem('myShowdownTeam');
         if (savedData) {
             currentTeam = JSON.parse(savedData);
         }
     }
-    // ------------------------------------------
 
-    // 4. Render the Team Slots
+    // Render the Team Slots
     function renderTeam() {
         teamContainer.innerHTML = '';
         currentTeam.forEach((slotData, slotIndex) => {
@@ -259,6 +260,7 @@
                     <button class="remove-btn" onclick="removePokemon(${slotIndex})" title="Remove Pokémon">X</button>
                     <img src="${p.sprite}" alt="${p.name}" class="sprite-img" onerror="this.outerHTML='<div style=\\'font-size: 3em; margin-bottom: 10px;\\'>${p.emoji}</div>'">
                     <strong>${p.name}</strong>
+                    <div style="font-size: 0.75em; color: #64748b;">A:${p.stats.atk} D:${p.stats.def} S:${p.stats.spe}</div>
                     <div class="dropdowns-container">
                         ${abilitySelectHTML}
                         ${moveSelectsHTML}
@@ -272,7 +274,7 @@
         });
     }
 
-    // 5. Render Roster
+    // Render Roster
     function renderRoster(searchQuery = '') {
         rosterContainer.innerHTML = ''; 
         const filteredPokemon = pokemonDatabase.filter(p => 
@@ -288,19 +290,18 @@
                 <br>
                 <strong>${pokemon.name}</strong>
                 <div class="type">${pokemon.type}</div>
+                <div class="stats-text">HP:${pokemon.stats.hp} A:${pokemon.stats.atk} D:${pokemon.stats.def} S:${pokemon.stats.spe}</div>
             `;
             card.onclick = () => addPokemon(pokemon);
             rosterContainer.appendChild(card);
         });
     }
 
-    // 6. Handle Search
     function handleSearch() {
         const query = document.getElementById('search-bar').value;
         renderRoster(query);
     }
 
-    // 7. Add to team (Added saveTeam call)
     function addPokemon(pokemon) {
         const emptyIndex = currentTeam.findIndex(slot => slot === null);
         if (emptyIndex !== -1) {
@@ -316,27 +317,23 @@
         }
     }
 
-    // 8. Update ability (Added saveTeam call)
     function updateAbility(slotIndex, abilityName) {
         currentTeam[slotIndex].ability = abilityName;
         saveTeam();
     }
 
-    // 9. Update move (Added saveTeam call)
     function updateMove(slotIndex, moveIndex, moveName) {
         currentTeam[slotIndex].moves[moveIndex] = moveName;
         saveTeam();
     }
 
-    // 10. Remove from team (Added saveTeam call)
     function removePokemon(index) {
         currentTeam[index] = null;
         saveTeam();
         renderTeam();
     }
 
-    // --- Initialize the app ---
-    loadTeam(); // Check for saved data first!
+    loadTeam(); 
     renderTeam();
     renderRoster();
 </script>

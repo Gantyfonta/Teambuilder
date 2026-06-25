@@ -171,16 +171,14 @@
         <a href="index.html" class="home-btn">🏠 Main Menu</a>
     </div>
     
-    <div class="team-container" id="team-slots">
-        </div>
+    <div class="team-container" id="team-slots"></div>
 
     <div class="search-container">
         <h3>Available Pokémon</h3>
         <input type="text" id="search-bar" placeholder="Search Pokémon..." onkeyup="handleSearch()">
     </div>
     
-    <div class="roster" id="roster">
-        </div>
+    <div class="roster" id="roster"></div>
 </div>
 
 <script>
@@ -218,13 +216,11 @@
         localStorage.setItem('myShowdownTeam', JSON.stringify(currentTeam));
     }
 
-    // --- CRITICAL FIX: Safe Schema Verification ---
     function loadTeam() {
         const savedData = localStorage.getItem('myShowdownTeam');
         if (savedData) {
             try {
                 const parsedData = JSON.parse(savedData);
-                // If any slot has a pokemon but no stats, wipe it to prevent layout crashes
                 const isCorrupted = parsedData.some(slot => slot && slot.pokemon && !slot.pokemon.stats);
                 if (isCorrupted) {
                     localStorage.removeItem('myShowdownTeam');
@@ -243,3 +239,110 @@
         currentTeam.forEach((slotData, slotIndex) => {
             const slotEl = document.createElement('div');
             
+            if (slotData && slotData.pokemon && slotData.pokemon.stats) {
+                slotEl.className = 'slot filled';
+                const p = slotData.pokemon;
+                
+                let abilityOptionsHTML = `<option value="">Select Ability</option>`;
+                p.abilities.forEach(ability => {
+                    const isSelected = slotData.ability === ability ? 'selected' : '';
+                    abilityOptionsHTML += `<option value="${ability}" ${isSelected}>${ability}</option>`;
+                });
+                const abilitySelectHTML = `<select class="ability-select" onchange="updateAbility(${slotIndex}, this.value)">${abilityOptionsHTML}</select>`;
+
+                let moveSelectsHTML = '';
+                for(let i = 0; i < 4; i++) {
+                    let optionsHTML = `<option value="">Select Move ${i+1}</option>`;
+                    p.learnset.forEach(moveName => {
+                        const isSelected = slotData.moves[i] === moveName ? 'selected' : '';
+                        const moveInfo = moveDatabase[moveName];
+                        const powerText = moveInfo && moveInfo.power ? ` (BP: ${moveInfo.power})` : '';
+                        optionsHTML += `<option value="${moveName}" ${isSelected}>${moveName}${powerText}</option>`;
+                    });
+                    
+                    moveSelectsHTML += `<select onchange="updateMove(${slotIndex}, ${i}, this.value)">${optionsHTML}</select>`;
+                }
+
+                slotEl.innerHTML = `
+                    <button class="remove-btn" onclick="removePokemon(${slotIndex})" title="Remove Pokémon">X</button>
+                    <img src="${p.sprite}" alt="${p.name}" class="sprite-img" onerror="this.outerHTML='<div style=\\'font-size: 3em; margin-bottom: 10px;\\'>${p.emoji}</div>'">
+                    <strong>${p.name}</strong>
+                    <div style="font-size: 0.75em; color: #64748b;">A:${p.stats.atk} D:${p.stats.def} S:${p.stats.spe}</div>
+                    <div class="dropdowns-container">
+                        ${abilitySelectHTML}
+                        ${moveSelectsHTML}
+                    </div>
+                `;
+            } else {
+                slotEl.className = 'slot';
+                slotEl.innerHTML = `<span style="color: #94a3b8;">Empty Slot</span>`;
+            }
+            teamContainer.appendChild(slotEl);
+        });
+    }
+
+    function renderRoster(searchQuery = '') {
+        rosterContainer.innerHTML = ''; 
+        const filteredPokemon = pokemonDatabase.filter(p => 
+            p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+            p.type.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+        filteredPokemon.forEach(pokemon => {
+            const card = document.createElement('div');
+            card.className = 'pokemon-card';
+            card.innerHTML = `
+                <img src="${pokemon.sprite}" alt="${pokemon.name}" class="sprite-img" onerror="this.outerHTML='<div style=\\'font-size: 3em; margin-bottom: 10px;\\'>${pokemon.emoji}</div>'">
+                <br>
+                <strong>${pokemon.name}</strong>
+                <div class="type">${pokemon.type}</div>
+                <div class="stats-text">HP:${pokemon.stats.hp} A:${pokemon.stats.atk} D:${pokemon.stats.def} S:${pokemon.stats.spe}</div>
+            `;
+            card.onclick = () => addPokemon(pokemon);
+            rosterContainer.appendChild(card);
+        });
+    }
+
+    function handleSearch() {
+        const query = document.getElementById('search-bar').value;
+        renderRoster(query);
+    }
+
+    function addPokemon(pokemon) {
+        const emptyIndex = currentTeam.findIndex(slot => slot === null);
+        if (emptyIndex !== -1) {
+            currentTeam[emptyIndex] = {
+                pokemon: pokemon,
+                ability: "",
+                moves: ["", "", "", ""] 
+            };
+            saveTeam();
+            renderTeam();
+        } else {
+            alert("Your team is full! Remove a Pokémon first.");
+        }
+    }
+
+    function updateAbility(slotIndex, abilityName) {
+        currentTeam[slotIndex].ability = abilityName;
+        saveTeam();
+    }
+
+    function updateMove(slotIndex, moveIndex, moveName) {
+        currentTeam[slotIndex].moves[moveIndex] = moveName;
+        saveTeam();
+    }
+
+    function removePokemon(index) {
+        currentTeam[index] = null;
+        saveTeam();
+        renderTeam();
+    }
+
+    loadTeam(); 
+    renderTeam();
+    renderRoster();
+</script>
+
+</body>
+</html>

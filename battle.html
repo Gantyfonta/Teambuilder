@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multiplayer Battle Arena (Crash-Proof Update)</title>
+    <title>Multiplayer Battle Arena (Switch Mechanics Fixed)</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -125,7 +125,7 @@
         .opponent-sprite { top: 60px; right: 100px; }
         .player-sprite { bottom: 160px; left: 100px; transform: scaleX(-1); }
 
-        /* User Controls Bar Configuration */
+        /* User Controls Bar */
         .ui-panel {
             position: absolute;
             bottom: 0;
@@ -420,15 +420,37 @@
             return;
         }
 
-        if (activeMe.hp <= 0) {
-            document.getElementById('dialogue').innerText = `${activeMe.name} fainted! You must select a replacement unit to deploy.`;
-            viewingSwitchMenu = true; 
-            buildForcedSwitchPanel(me.team, me.activeIndex);
-            return;
+        // --- NEW: Faint Replacement Phase ---
+        if (activeMe.hp <= 0 || activeOpp.hp <= 0) {
+            const myActionKey = `${myRole}Move`;
+            
+            if (activeMe.hp <= 0) {
+                // If local Pokemon faints, force a replacement selection
+                document.getElementById('dialogue').innerText = `${activeMe.name} fainted! You must deploy a replacement.`;
+                
+                if (data.actions && data.actions[myActionKey] && data.actions[myActionKey].startsWith("SWITCH")) {
+                    document.getElementById('dialogue').innerText = "Waiting for your opponent to confirm...";
+                    setButtonsDisabled(true);
+                    buildEmptyControlPanel();
+                } else {
+                    viewingSwitchMenu = true; 
+                    buildForcedSwitchPanel(me.team, me.activeIndex);
+                }
+            } else {
+                // If opponent faints, lock UI and auto-send a WAIT command
+                document.getElementById('dialogue').innerText = `Waiting for opponent to replace ${activeOpp.name}...`;
+                setButtonsDisabled(true);
+                buildEmptyControlPanel();
+                
+                if (!data.actions || data.actions[myActionKey] !== "WAIT") {
+                    submitActionChoice("WAIT");
+                }
+            }
+            return; // Halts the normal action menu from rendering during replacement
         }
 
         const myActionKey = `${myRole}Move`;
-        if (data.actions && data.actions[myActionKey]) {
+        if (data.actions && data.actions[myActionKey] && data.actions[myActionKey] !== "WAIT") {
             document.getElementById('dialogue').innerText = "Waiting for your opponent to confirm an action...";
             setButtonsDisabled(true);
             buildEmptyControlPanel();
@@ -523,7 +545,7 @@
         document.querySelectorAll('.move-btn').forEach(b => b.disabled = shouldDisable);
     }
 
-    // --- Fortified Host Resolution Engine with Failsafe Catch ---
+    // --- Fortified Host Resolution Engine ---
     function evaluateTurnCalculations(data) {
         if (myRole !== "p1") return; 
         if (!data.actions || !data.actions.p1Move || !data.actions.p2Move) return;
@@ -540,17 +562,15 @@
 
             if (act1.startsWith("SWITCH:")) {
                 const nextIdx = parseInt(act1.split(":"));
-                const oldName = p1.team[p1.activeIndex].name;
                 p1.activeIndex = nextIdx;
-                turnLog += `${oldName} was recalled! Go, ${p1.team[p1.activeIndex].name}!\n`;
+                turnLog += `Go, ${p1.team[p1.activeIndex].name}!\n`;
                 p1Switched = true;
             }
 
             if (act2.startsWith("SWITCH:")) {
                 const nextIdx = parseInt(act2.split(":"));
-                const oldName = p2.team[p2.activeIndex].name;
                 p2.activeIndex = nextIdx;
-                turnLog += `${oldName} was recalled! Go, ${p2.team[p2.activeIndex].name}!\n`;
+                turnLog += `Go, ${p2.team[p2.activeIndex].name}!\n`;
                 p2Switched = true;
             }
 
@@ -559,8 +579,9 @@
             let mon1 = p1.team[p1.activeIndex];
             let mon2 = p2.team[p2.activeIndex];
 
-            const p1Attacking = !p1Switched;
-            const p2Attacking = !p2Switched;
+            // Ignore WAIT commands submitted during Replacement Phase
+            const p1Attacking = !p1Switched && act1 !== "WAIT";
+            const p2Attacking = !p2Switched && act2 !== "WAIT";
 
             if (p1Attacking && p2Attacking) {
                 if ((mon1.spe || 50) >= (mon2.spe || 50)) {
@@ -585,7 +606,6 @@
                 turnLog += resolution.text + `It dealt ${resolution.damage} damage.\n\n`;
             }
 
-            // Successfully overwrite the old actions so the game stops waiting
             update(roomRef, {
                 p1: p1,
                 p2: p2,
@@ -595,7 +615,6 @@
             });
             
         } catch (error) {
-            // THE FAILSAFE: If anything breaks in the math, it catches it and resets the turn anyway!
             console.error("Battle Engine Error:", error);
             update(roomRef, {
                 actions: { p1Move: "", p2Move: "" },
@@ -621,7 +640,6 @@
         const moveData = moveDatabase[moveName];
         if (!moveData) return { damage: 0, text: "The attack failed...\n" };
 
-        // Safeguarded division math so missing stats never crash the script
         const base = Math.floor((((22 * moveData.power * (attacker.atk || 10)) / (defender.def || 10)) / 50) + 2);
         const typeMult = getEffectiveness(moveData.type, defender.type);
         const stabMult = (attacker.type && attacker.type.includes(moveData.type)) ? 1.5 : 1;

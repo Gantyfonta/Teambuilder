@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multiplayer Battle Arena (Switch Mechanics Fixed)</title>
+    <title>Multiplayer Battle Arena</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -18,7 +18,7 @@
 
         .battle-container {
             width: 800px;
-            height: 500px;
+            height: 520px; /* Slightly taller to accommodate the new UI panel */
             background: linear-gradient(to bottom, #7dd3fc, #e0f2fe, #dcfce7, #86efac); 
             border-radius: 12px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
@@ -92,7 +92,9 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         .opponent-hud { top: 30px; left: 40px; }
-        .player-hud { bottom: 160px; right: 40px; }
+        
+        /* Moved up to prevent overlapping the expanded UI panel */
+        .player-hud { bottom: 220px; right: 40px; }
         
         .hp-text {
             font-size: 0.8em;
@@ -123,14 +125,16 @@
             image-rendering: pixelated;
         }
         .opponent-sprite { top: 60px; right: 100px; }
-        .player-sprite { bottom: 160px; left: 100px; transform: scaleX(-1); }
+        
+        /* Moved up to prevent overlapping the expanded UI panel */
+        .player-sprite { bottom: 220px; left: 100px; transform: scaleX(-1); }
 
-        /* User Controls Bar */
+        /* Expanded User Controls Bar */
         .ui-panel {
             position: absolute;
             bottom: 0;
             width: 100%;
-            height: 140px;
+            height: 200px; /* Expanded from 140px to safely fit all buttons */
             background: #ffffff;
             border-top: 4px solid #334155;
             display: flex;
@@ -148,12 +152,12 @@
         }
 
         .moves-panel {
-            width: 420px;
+            width: 440px; /* Slightly wider */
             display: grid;
             grid-template-columns: 1fr 1fr;
             grid-template-rows: auto;
-            gap: 6px;
-            padding: 10px;
+            gap: 8px;
+            padding: 12px;
             background: #f8fafc;
             overflow-y: auto;
         }
@@ -188,6 +192,12 @@
             border-color: #2563eb;
         }
         .switch-menu-btn:hover:not(:disabled) { background: #1d4ed8; }
+        
+        .back-btn {
+            background: #64748b;
+            border-color: #475569;
+        }
+        .back-btn:hover:not(:disabled) { background: #475569; }
     </style>
 </head>
 <body>
@@ -235,7 +245,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyBr49eujOYIpnO_ysSBUfxFX3CMPPfkTPg",
@@ -350,7 +360,12 @@
         localTeamSetup = loadLocalTeamStructure();
 
         if (myRole === "p1") {
-            set(roomRef, {
+            // BUG FIX: this previously used set(), which completely overwrites the
+            // room node. If Player 1 refreshed/reconnected after Player 2 had
+            // already written their team, set() would silently erase Player 2's
+            // data (and the whole match state). update() merges instead, so an
+            // already-joined opponent's data is preserved.
+            update(roomRef, {
                 turn: 0,
                 lastTurnSummary: "Waiting for Player 2 to join...",
                 actions: { p1Move: "", p2Move: "" },
@@ -420,12 +435,10 @@
             return;
         }
 
-        // --- NEW: Faint Replacement Phase ---
         if (activeMe.hp <= 0 || activeOpp.hp <= 0) {
             const myActionKey = `${myRole}Move`;
             
             if (activeMe.hp <= 0) {
-                // If local Pokemon faints, force a replacement selection
                 document.getElementById('dialogue').innerText = `${activeMe.name} fainted! You must deploy a replacement.`;
                 
                 if (data.actions && data.actions[myActionKey] && data.actions[myActionKey].startsWith("SWITCH")) {
@@ -437,7 +450,6 @@
                     buildForcedSwitchPanel(me.team, me.activeIndex);
                 }
             } else {
-                // If opponent faints, lock UI and auto-send a WAIT command
                 document.getElementById('dialogue').innerText = `Waiting for opponent to replace ${activeOpp.name}...`;
                 setButtonsDisabled(true);
                 buildEmptyControlPanel();
@@ -446,7 +458,7 @@
                     submitActionChoice("WAIT");
                 }
             }
-            return; // Halts the normal action menu from rendering during replacement
+            return; 
         }
 
         const myActionKey = `${myRole}Move`;
@@ -458,12 +470,12 @@
             if (viewingSwitchMenu) {
                 buildSwitchMenuPanel(me.team, me.activeIndex, false);
             } else {
-                buildActionMovePanel(activeMe.moves);
+                buildActionMovePanel(activeMe.moves, me.team.length);
             }
         }
     }
 
-    function buildActionMovePanel(moveList) {
+    function buildActionMovePanel(moveList, teamLength) {
         const panel = document.getElementById('moves-panel');
         panel.innerHTML = '';
         
@@ -482,14 +494,17 @@
             panel.appendChild(btn);
         }
 
-        const switchToggle = document.createElement('button');
-        switchToggle.className = 'move-btn switch-menu-btn';
-        switchToggle.innerText = '🔄 Switch Pokémon';
-        switchToggle.onclick = () => {
-            viewingSwitchMenu = true;
-            syncUserInterface(currentMatchData);
-        };
-        panel.appendChild(switchToggle);
+        // Only show the switch button if you have a bench to switch to!
+        if (teamLength > 1) {
+            const switchToggle = document.createElement('button');
+            switchToggle.className = 'move-btn switch-menu-btn';
+            switchToggle.innerText = '🔄 Switch Pokémon';
+            switchToggle.onclick = () => {
+                viewingSwitchMenu = true;
+                syncUserInterface(currentMatchData);
+            };
+            panel.appendChild(switchToggle);
+        }
     }
 
     function buildSwitchMenuPanel(teamList, activeIdx, isForced) {
@@ -515,7 +530,7 @@
 
         if (!isForced) {
             const backBtn = document.createElement('button');
-            backBtn.className = 'move-btn switch-menu-btn';
+            backBtn.className = 'move-btn switch-menu-btn back-btn';
             backBtn.innerText = '⬅️ Back to Moves';
             backBtn.onclick = () => {
                 viewingSwitchMenu = false;
@@ -545,7 +560,6 @@
         document.querySelectorAll('.move-btn').forEach(b => b.disabled = shouldDisable);
     }
 
-    // --- Fortified Host Resolution Engine ---
     function evaluateTurnCalculations(data) {
         if (myRole !== "p1") return; 
         if (!data.actions || !data.actions.p1Move || !data.actions.p2Move) return;
@@ -561,14 +575,19 @@
             let p2Switched = false;
 
             if (act1.startsWith("SWITCH:")) {
-                const nextIdx = parseInt(act1.split(":"));
+                // BUG FIX: parseInt(act1.split(":")) was parsing the whole
+                // ["SWITCH","1"] array (stringified to "SWITCH,1") instead of
+                // just the index, which always produced NaN and silently broke
+                // every switch. Now we grab element [1] of the split result.
+                const nextIdx = parseInt(act1.split(":")[1], 10);
                 p1.activeIndex = nextIdx;
                 turnLog += `Go, ${p1.team[p1.activeIndex].name}!\n`;
                 p1Switched = true;
             }
 
             if (act2.startsWith("SWITCH:")) {
-                const nextIdx = parseInt(act2.split(":"));
+                // Same fix applied here.
+                const nextIdx = parseInt(act2.split(":")[1], 10);
                 p2.activeIndex = nextIdx;
                 turnLog += `Go, ${p2.team[p2.activeIndex].name}!\n`;
                 p2Switched = true;
@@ -579,7 +598,6 @@
             let mon1 = p1.team[p1.activeIndex];
             let mon2 = p2.team[p2.activeIndex];
 
-            // Ignore WAIT commands submitted during Replacement Phase
             const p1Attacking = !p1Switched && act1 !== "WAIT";
             const p2Attacking = !p2Switched && act2 !== "WAIT";
 

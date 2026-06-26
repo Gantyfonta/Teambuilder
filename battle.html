@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multiplayer Battle Arena (Switching Update)</title>
+    <title>Multiplayer Battle Arena (Crash-Proof Update)</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -285,7 +285,7 @@
     let roomRef = null;
     let localTeamSetup = null; 
     let currentMatchData = null;
-    let viewingSwitchMenu = false; // Toggle view tracking parameter
+    let viewingSwitchMenu = false; 
 
     const bgMusic = document.getElementById('battle-music');
     bgMusic.volume = 0.3;
@@ -303,7 +303,6 @@
         setupMultiplayerMatch();
     };
 
-    // Extracts up to 6 custom items out of Teambuilder local data pools
     function loadLocalTeamStructure() {
         const savedData = localStorage.getItem('myShowdownTeam');
         let parsedRoster = [];
@@ -314,7 +313,7 @@
                     if (slot && slot.pokemon && slot.pokemon.stats) {
                         parsedRoster.push({
                             name: slot.pokemon.name,
-                            type: slot.pokemon.type,
+                            type: slot.pokemon.type || "Normal",
                             sprite: slot.pokemon.sprite,
                             hp: slot.pokemon.stats.hp,
                             maxHp: slot.pokemon.stats.hp,
@@ -328,7 +327,6 @@
             } catch (e) { console.error(e); }
         }
         
-        // Dynamic Fallback configuration if local storage data profiles remain unpopulated
         if (parsedRoster.length === 0) {
             if (myRole === "p1") {
                 parsedRoster = [
@@ -392,7 +390,6 @@
         const activeMe = me.team[me.activeIndex];
         const activeOpp = opp.team[opp.activeIndex];
 
-        // Core Render Execution Elements
         document.getElementById('player-name').innerText = activeMe.name;
         document.getElementById('player-sprite').src = activeMe.sprite;
         document.getElementById('player-hp-text').innerText = `${activeMe.hp} / ${activeMe.maxHp}`;
@@ -407,7 +404,6 @@
 
         document.getElementById('dialogue').innerText = data.lastTurnSummary;
 
-        // Evaluate Global Team Defeat Matrix
         const myTeamWiped = me.team.every(mon => mon.hp <= 0);
         const oppTeamWiped = opp.team.every(mon => mon.hp <= 0);
 
@@ -424,7 +420,6 @@
             return;
         }
 
-        // Active Knockout Forced Switch Check Logic
         if (activeMe.hp <= 0) {
             document.getElementById('dialogue').innerText = `${activeMe.name} fainted! You must select a replacement unit to deploy.`;
             viewingSwitchMenu = true; 
@@ -432,7 +427,6 @@
             return;
         }
 
-        // Processing Input Confirmation Locks
         const myActionKey = `${myRole}Move`;
         if (data.actions && data.actions[myActionKey]) {
             document.getElementById('dialogue').innerText = "Waiting for your opponent to confirm an action...";
@@ -451,11 +445,10 @@
         const panel = document.getElementById('moves-panel');
         panel.innerHTML = '';
         
-        // Loop active moves
         for (let i = 0; i < 4; i++) {
             const btn = document.createElement('button');
             btn.className = 'move-btn';
-            const moveName = moveList[i];
+            const moveName = moveList ? moveList[i] : null;
             if (moveName && moveDatabase[moveName]) {
                 const type = moveDatabase[moveName].type;
                 btn.innerHTML = `<div>${moveName}</div><div class="move-type">${type}</div>`;
@@ -467,7 +460,6 @@
             panel.appendChild(btn);
         }
 
-        // Bench Swap interface transition toggle button
         const switchToggle = document.createElement('button');
         switchToggle.className = 'move-btn switch-menu-btn';
         switchToggle.innerText = '🔄 Switch Pokémon';
@@ -483,7 +475,7 @@
         panel.innerHTML = '';
 
         teamList.forEach((mon, index) => {
-            if (index === activeIdx) return; // Cannot switch to the currently active Pokemon
+            if (index === activeIdx) return; 
             const btn = document.createElement('button');
             btn.className = 'move-btn';
             btn.innerHTML = `<div>${mon.name}</div><div class="move-type">${mon.hp}/${mon.maxHp} HP</div>`;
@@ -499,7 +491,6 @@
             panel.appendChild(btn);
         });
 
-        // Cancel toggle button option (only visible if substitution sequence isn't forced)
         if (!isForced) {
             const backBtn = document.createElement('button');
             backBtn.className = 'move-btn switch-menu-btn';
@@ -532,93 +523,90 @@
         document.querySelectorAll('.move-btn').forEach(b => b.disabled = shouldDisable);
     }
 
-    // --- Host Resolution Core Calculation Module ---
+    // --- Fortified Host Resolution Engine with Failsafe Catch ---
     function evaluateTurnCalculations(data) {
         if (myRole !== "p1") return; 
         if (!data.actions || !data.actions.p1Move || !data.actions.p2Move) return;
 
-        let p1 = JSON.parse(JSON.stringify(data.p1));
-        let p2 = JSON.parse(JSON.stringify(data.p2));
-        const act1 = data.actions.p1Move;
-        const act2 = data.actions.p2Move;
+        try {
+            let p1 = JSON.parse(JSON.stringify(data.p1));
+            let p2 = JSON.parse(JSON.stringify(data.p2));
+            const act1 = data.actions.p1Move;
+            const act2 = data.actions.p2Move;
 
-        let turnLog = "";
+            let turnLog = "";
+            let p1Switched = false;
+            let p2Switched = false;
 
-        // --- Phase 1: High Priority Switch Execution Blocks ---
-        let p1Switched = false;
-        let p2Switched = false;
-
-        if (act1.startsWith("SWITCH:")) {
-            const nextIdx = parseInt(act1.split(":"));
-            const oldName = p1.team[p1.activeIndex].name;
-            p1.activeIndex = nextIdx;
-            turnLog += `${oldName} was recalled! Go, ${p1.team[p1.activeIndex].name}!\n`;
-            p1Switched = true;
-        }
-
-        if (act2.startsWith("SWITCH:")) {
-            const nextIdx = parseInt(act2.split(":"));
-            const oldName = p2.team[p2.activeIndex].name;
-            p2.activeIndex = nextIdx;
-            turnLog += `${oldName} was recalled! Go, ${p2.team[p2.activeIndex].name}!\n`;
-            p2Switched = true;
-        }
-
-        if (p1Switched || p2Switched) turnLog += "\n";
-
-        // Grab active pointers post switch adjustments
-        let mon1 = p1.team[p1.activeIndex];
-        let mon2 = p2.team[p2.activeIndex];
-
-        // --- Phase 2: Offensive Combat Attack Configurations ---
-        const p1Attacking = !p1Switched;
-        const p2Attacking = !p2Switched;
-
-        if (p1Attacking && p2Attacking) {
-            // Speed Priority Initialization Check Matrix
-            if (mon1.spe >= mon2.spe) {
-                // Strike Order Sequence: P1 then P2
-                executeAttack(mon1, mon2, act1);
-                if (mon2.hp > 0) {
-                    executeAttack(mon2, mon1, act2);
-                } else {
-                    turnLog += `${mon2.name} fainted and was unable to strike!`;
-                }
-            } else {
-                // Strike Order Sequence: P2 then P1
-                executeAttack(mon2, mon1, act2);
-                if (mon1.hp > 0) {
-                    executeAttack(mon1, mon2, act1);
-                } else {
-                    turnLog += `${mon1.name} fainted and was unable to strike!`;
-                }
+            if (act1.startsWith("SWITCH:")) {
+                const nextIdx = parseInt(act1.split(":"));
+                const oldName = p1.team[p1.activeIndex].name;
+                p1.activeIndex = nextIdx;
+                turnLog += `${oldName} was recalled! Go, ${p1.team[p1.activeIndex].name}!\n`;
+                p1Switched = true;
             }
-        } else if (p1Attacking && !p2Attacking) {
-            // Player 1 attacks target that skipped turn via deployment switch
-            executeAttack(mon1, mon2, act1);
-        } else if (p2Attacking && !p1Attacking) {
-            // Player 2 attacks target that skipped turn via deployment switch
-            executeAttack(mon2, mon1, act2);
-        }
 
-        function executeAttack(attacker, defender, moveName) {
-            let resolution = computeDamageImpact(attacker, defender, moveName);
-            defender.hp = Math.max(0, defender.hp - resolution.damage);
-            turnLog += `${attacker.name} used ${moveName}!\n`;
-            turnLog += resolution.text + `It dealt ${resolution.damage} damage.\n\n`;
-        }
+            if (act2.startsWith("SWITCH:")) {
+                const nextIdx = parseInt(act2.split(":"));
+                const oldName = p2.team[p2.activeIndex].name;
+                p2.activeIndex = nextIdx;
+                turnLog += `${oldName} was recalled! Go, ${p2.team[p2.activeIndex].name}!\n`;
+                p2Switched = true;
+            }
 
-        // Sync and push changes up to database path nodes
-        update(roomRef, {
-            p1: p1,
-            p2: p2,
-            actions: { p1Move: "", p2Move: "" },
-            lastTurnSummary: turnLog.trim(),
-            turn: data.turn + 1
-        });
+            if (p1Switched || p2Switched) turnLog += "\n";
+
+            let mon1 = p1.team[p1.activeIndex];
+            let mon2 = p2.team[p2.activeIndex];
+
+            const p1Attacking = !p1Switched;
+            const p2Attacking = !p2Switched;
+
+            if (p1Attacking && p2Attacking) {
+                if ((mon1.spe || 50) >= (mon2.spe || 50)) {
+                    executeAttack(mon1, mon2, act1);
+                    if (mon2.hp > 0) executeAttack(mon2, mon1, act2);
+                    else turnLog += `${mon2.name} fainted and was unable to strike!\n`;
+                } else {
+                    executeAttack(mon2, mon1, act2);
+                    if (mon1.hp > 0) executeAttack(mon1, mon2, act1);
+                    else turnLog += `${mon1.name} fainted and was unable to strike!\n`;
+                }
+            } else if (p1Attacking && !p2Attacking) {
+                executeAttack(mon1, mon2, act1);
+            } else if (p2Attacking && !p1Attacking) {
+                executeAttack(mon2, mon1, act2);
+            }
+
+            function executeAttack(attacker, defender, moveName) {
+                let resolution = computeDamageImpact(attacker, defender, moveName);
+                defender.hp = Math.max(0, defender.hp - resolution.damage);
+                turnLog += `${attacker.name} used ${moveName}!\n`;
+                turnLog += resolution.text + `It dealt ${resolution.damage} damage.\n\n`;
+            }
+
+            // Successfully overwrite the old actions so the game stops waiting
+            update(roomRef, {
+                p1: p1,
+                p2: p2,
+                actions: { p1Move: "", p2Move: "" }, 
+                lastTurnSummary: turnLog.trim(),
+                turn: data.turn + 1
+            });
+            
+        } catch (error) {
+            // THE FAILSAFE: If anything breaks in the math, it catches it and resets the turn anyway!
+            console.error("Battle Engine Error:", error);
+            update(roomRef, {
+                actions: { p1Move: "", p2Move: "" },
+                lastTurnSummary: "⚠️ A system calculation error occurred. The turn was skipped to prevent the game from freezing.",
+                turn: data.turn + 1
+            });
+        }
     }
 
     function getEffectiveness(moveType, targetTypeString) {
+        if (!targetTypeString) return 1;
         const types = targetTypeString.split('/');
         let mult = 1;
         types.forEach(t => {
@@ -631,11 +619,12 @@
 
     function computeDamageImpact(attacker, defender, moveName) {
         const moveData = moveDatabase[moveName];
-        if (!moveData) return { damage: 0, text: "" };
+        if (!moveData) return { damage: 0, text: "The attack failed...\n" };
 
-        const base = Math.floor((((22 * moveData.power * attacker.atk) / defender.def) / 50) + 2);
+        // Safeguarded division math so missing stats never crash the script
+        const base = Math.floor((((22 * moveData.power * (attacker.atk || 10)) / (defender.def || 10)) / 50) + 2);
         const typeMult = getEffectiveness(moveData.type, defender.type);
-        const stabMult = attacker.type.includes(moveData.type) ? 1.5 : 1;
+        const stabMult = (attacker.type && attacker.type.includes(moveData.type)) ? 1.5 : 1;
         const roll = (Math.floor(Math.random() * 16) + 85) / 100;
 
         const finalDamage = Math.floor(base * typeMult * stabMult * roll);

@@ -185,22 +185,31 @@
     const moveDatabase = {
         "Tackle": { type: "Normal", power: 40 },
         "Vine Whip": { type: "Grass", power: 45 },
+        "Energy Ball": { type: "Grass", power: 90 },
         "Sludge Bomb": { type: "Poison", power: 90 },
         "Flamethrower": { type: "Fire", power: 90 },
         "Water Gun": { type: "Water", power: 40 },
+        "Hydro Pump": { type: "Water", power: 110 },
+        "Chilling Water": { type: "Water", power: 50 },
         "Thunderbolt": { type: "Electric", power: 90 },
         "Shadow Ball": { type: "Ghost", power: 80 },
         "Body Slam": { type: "Normal", power: 85 },
         "Outrage": { type: "Dragon", power: 120 },
         "Astonish": { type: "Ghost", power: 30 },
         "Pounce": { type: "Bug", power: 50 },
-        "Bullet Punch": { type: "Steel", power: 40 }
+        "Bullet Punch": { type: "Steel", power: 40 },
+        "Close Combat": { type: "Fighting", power: 120 },
+        "Vacuum Wave": { type: "Fighting", power: 40 },
+        "Rollout": { type: "Rock", power: 30 },
+        "Double-Edge": { type: "Normal", power: 120 },
+        "Shadow Ball": { type: "Ghost", power: 80 },
+        "Detect": { type: "Fighting", power: 1 }
     };
 
     const pokemonDatabase = [
-        { id: 1, name: "Chewer", type: "Ground", sprite: "sprites/Chewer.png", emoji: "🌍", abilities: ["Simple", "Unaware"], stats: { hp: 59, atk: 45, def: 40, spe: 31 }, learnset: ["Tackle", "Vine Whip", "Sludge Bomb"] },
-        { id: 4, name: "Apptle", type: "Grass/Ghost", sprite: "sprites/Apptle.png", emoji: "🪴👻", abilities: ["Ripen", "Gluttony"], stats: { hp: 50, atk: 30, def: 55, spe: 20 }, learnset: ["Astonish", "Pounce"] },
-        { id: 7, name: "Squirtle", type: "Water", sprite: "sprites/squirtle.png", emoji: "💧", abilities: ["Torrent", "Rain Dish"], stats: { hp: 124, atk: 48, def: 65, spe: 43 }, learnset: ["Tackle", "Water Gun"] },
+        { id: 1, name: "Chewer", type: "Ground", sprite: "sprites/Chewer.png", emoji: "🌍", abilities: ["Simple", "Unaware"], stats: { hp: 59, atk: 45, def: 40, spe: 31 }, learnset: ["Tackle", "Rollout", "Double-Edge", "Thunderbolt"] },
+        { id: 4, name: "Apptle", type: "Grass/Ghost", sprite: "sprites/Apptle.png", emoji: "🪴👻", abilities: ["Ripen", "Gluttony"], stats: { hp: 50, atk: 30, def: 55, spe: 20 }, learnset: ["Astonish", "Pounce", "Energy Ball", "Shadow Ball"] },
+        { id: 7, name: "Suctopus", type: "Water", sprite: "sprites/Suctopus.png", emoji: "💧", abilities: ["Torrent", "Limber"], stats: { hp: 80, atk: 118, def: 90, spe: 42 }, learnset: ["Detect", "Close Combat", "Hydro Pump", "Chilling Water", "Vacuum Wave"] },
         { id: 25, name: "Pikachu", type: "Electric", sprite: "sprites/pikachu.png", emoji: "⚡", abilities: ["Static", "Lightning Rod"], stats: { hp: 115, atk: 55, def: 40, spe: 90 }, learnset: ["Tackle", "Thunderbolt"] },
         { id: 94, name: "Gengar", type: "Ghost/Poison", sprite: "sprites/gengar.png", emoji: "👻", abilities: ["Cursed Body"], stats: { hp: 140, atk: 95, def: 60, spe: 110 }, learnset: ["Shadow Ball", "Sludge Bomb"] },
         { id: 143, name: "Snorlax", type: "Normal", sprite: "sprites/snorlax.png", emoji: "💤", abilities: ["Immunity", "Thick Fat", "Gluttony"], stats: { hp: 240, atk: 110, def: 65, spe: 30 }, learnset: ["Tackle", "Body Slam"] },

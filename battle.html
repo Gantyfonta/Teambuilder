@@ -198,6 +198,17 @@
             border-color: #475569;
         }
         .back-btn:hover:not(:disabled) { background: #475569; }
+
+        .status-badge {
+            display: inline-block;
+            font-size: 0.68em;
+            font-weight: bold;
+            padding: 1px 5px;
+            border-radius: 4px;
+            margin-left: 5px;
+            vertical-align: middle;
+            letter-spacing: 0.03em;
+        }
     </style>
 </head>
 <body>
@@ -224,14 +235,14 @@
 
     <div class="battle-container" id="battle-arena">
         <div class="hud opponent-hud">
-            <strong id="opp-name">Waiting...</strong>
+            <div><strong id="opp-name">Waiting...</strong><span id="opp-status-badge" class="status-badge" style="display:none"></span></div>
             <div class="hp-bar-container"><div class="hp-bar" id="opp-hp"></div></div>
             <div class="hp-text" id="opp-hp-text">-- / --</div>
         </div>
         <img src="" class="sprite opponent-sprite" id="opp-sprite" alt="Opponent">
 
         <div class="hud player-hud">
-            <strong id="player-name">Loading...</strong>
+            <div><strong id="player-name">Loading...</strong><span id="player-status-badge" class="status-badge" style="display:none"></span></div>
             <div class="hp-bar-container"><div class="hp-bar" id="player-hp"></div></div>
             <div class="hp-text" id="player-hp-text">-- / --</div>
         </div>
@@ -245,7 +256,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyBr49eujOYIpnO_ysSBUfxFX3CMPPfkTPg",
@@ -274,27 +285,88 @@
         "Dragon": { "Steel": 0.5, "Dragon": 2.0 }
     };
 
+    // ─────────────────────────────────────────────────────────────────────
+    // MOVE DATABASE
+    // Each entry: { type, category, power, accuracy, effect? }
+    //   category : "Physical" | "Special" | "Status"
+    //   power    : base power (0 for status-only moves)
+    //   accuracy : hit chance 0-100 (omit or 100 = always hits)
+    //   effect   : optional { status: "<KEY>", chance: 0-100 }
+    //              status keys: BRN PSN TOX PAR SLP FRZ CNF INF
+    // ─────────────────────────────────────────────────────────────────────
     const moveDatabase = {
-        "Tackle": { type: "Normal", power: 40 },
-        "Vine Whip": { type: "Grass", power: 45 },
-        "Energy Ball": { type: "Grass", power: 90 },
-        "Sludge Bomb": { type: "Poison", power: 90 },
-        "Flamethrower": { type: "Fire", power: 90 },
-        "Water Gun": { type: "Water", power: 40 },
-        "Hydro Pump": { type: "Water", power: 110 },
-        "Chilling Water": { type: "Water", power: 50 },
-        "Thunderbolt": { type: "Electric", power: 90 },
-        "Body Slam": { type: "Normal", power: 85 },
-        "Outrage": { type: "Dragon", power: 120 },
-        "Astonish": { type: "Ghost", power: 30 },
-        "Pounce": { type: "Bug", power: 50 },
-        "Bullet Punch": { type: "Steel", power: 40 },
-        "Close Combat": { type: "Fighting", power: 120 },
-        "Vacuum Wave": { type: "Fighting", power: 40 },
-        "Rollout": { type: "Rock", power: 30 },
-        "Double-Edge": { type: "Normal", power: 120 },
-        "Shadow Ball": { type: "Ghost", power: 80 },
-        "Detect": { type: "Fighting", power: 1 }
+        // ── Normal ──────────────────────────────────────────────────────
+        "Tackle":        { type: "Normal",   category: "Physical", power: 40,  accuracy: 100 },
+        "Body Slam":     { type: "Normal",   category: "Physical", power: 85,  accuracy: 100, effect: { status: "PAR", chance: 30 } },
+        "Double-Edge":   { type: "Normal",   category: "Physical", power: 120, accuracy: 100 },
+        "Attract":       { type: "Normal",   category: "Status",   power: 0,   accuracy: 100, effect: { status: "INF", chance: 100 } },
+
+        // ── Fire ────────────────────────────────────────────────────────
+        "Flamethrower":  { type: "Fire",     category: "Special",  power: 90,  accuracy: 100, effect: { status: "BRN", chance: 10 } },
+        "Lava Plume":    { type: "Fire",     category: "Special",  power: 80,  accuracy: 100, effect: { status: "BRN", chance: 30 } },
+        "Will-O-Wisp":   { type: "Fire",     category: "Status",   power: 0,   accuracy: 85,  effect: { status: "BRN", chance: 100 } },
+
+        // ── Water ───────────────────────────────────────────────────────
+        "Water Gun":     { type: "Water",    category: "Special",  power: 40,  accuracy: 100 },
+        "Hydro Pump":    { type: "Water",    category: "Special",  power: 110, accuracy: 80 },
+        "Chilling Water":{ type: "Water",    category: "Special",  power: 50,  accuracy: 100 },
+        "Scald":         { type: "Water",    category: "Special",  power: 80,  accuracy: 100, effect: { status: "BRN", chance: 30 } },
+
+        // ── Grass ───────────────────────────────────────────────────────
+        "Vine Whip":     { type: "Grass",    category: "Physical", power: 45,  accuracy: 100 },
+        "Energy Ball":   { type: "Grass",    category: "Special",  power: 90,  accuracy: 100 },
+        "Sleep Powder":  { type: "Grass",    category: "Status",   power: 0,   accuracy: 75,  effect: { status: "SLP", chance: 100 } },
+        "Spore":         { type: "Grass",    category: "Status",   power: 0,   accuracy: 100, effect: { status: "SLP", chance: 100 } },
+
+        // ── Electric ────────────────────────────────────────────────────
+        "Thunderbolt":   { type: "Electric", category: "Special",  power: 90,  accuracy: 100, effect: { status: "PAR", chance: 10 } },
+        "Discharge":     { type: "Electric", category: "Special",  power: 80,  accuracy: 100, effect: { status: "PAR", chance: 30 } },
+        "Thunder Wave":  { type: "Electric", category: "Status",   power: 0,   accuracy: 90,  effect: { status: "PAR", chance: 100 } },
+
+        // ── Poison ──────────────────────────────────────────────────────
+        "Sludge Bomb":   { type: "Poison",   category: "Special",  power: 90,  accuracy: 100, effect: { status: "PSN", chance: 30 } },
+        "Toxic":         { type: "Poison",   category: "Status",   power: 0,   accuracy: 90,  effect: { status: "TOX", chance: 100 } },
+
+        // ── Ghost ───────────────────────────────────────────────────────
+        "Shadow Ball":   { type: "Ghost",    category: "Special",  power: 80,  accuracy: 100 },
+        "Astonish":      { type: "Ghost",    category: "Physical", power: 30,  accuracy: 100 },
+        "Confuse Ray":   { type: "Ghost",    category: "Status",   power: 0,   accuracy: 100, effect: { status: "CNF", chance: 100 } },
+
+        // ── Fighting ────────────────────────────────────────────────────
+        "Close Combat":  { type: "Fighting", category: "Physical", power: 120, accuracy: 100 },
+        "Vacuum Wave":   { type: "Fighting", category: "Special",  power: 40,  accuracy: 100 },
+        "Detect":        { type: "Fighting", category: "Status",   power: 0,   accuracy: 100 },
+
+        // ── Bug ─────────────────────────────────────────────────────────
+        "Pounce":        { type: "Bug",      category: "Physical", power: 50,  accuracy: 100 },
+
+        // ── Steel ───────────────────────────────────────────────────────
+        "Bullet Punch":  { type: "Steel",    category: "Physical", power: 40,  accuracy: 100 },
+
+        // ── Dragon ──────────────────────────────────────────────────────
+        "Outrage":       { type: "Dragon",   category: "Physical", power: 120, accuracy: 100 },
+
+        // ── Rock ────────────────────────────────────────────────────────
+        "Rollout":       { type: "Rock",     category: "Physical", power: 30,  accuracy: 90 },
+    };
+
+    // ─────────────────────────────────────────────────────────────────────
+    // STATUS DEFINITIONS  (display info only — logic is inline in the engine)
+    // Each mon in Firebase may have:
+    //   status        : primary status key (BRN/PSN/TOX/PAR/SLP/FRZ) or null
+    //   statusCounter : sleep turns remaining | TOX escalation counter
+    //   confused      : boolean (volatile — cleared on switch)
+    //   infatuated    : boolean (volatile — cleared on switch)
+    // ─────────────────────────────────────────────────────────────────────
+    const statusDefs = {
+        "BRN": { label: "BRN", emoji: "🔥", color: "#7f1d1d", bg: "#fecaca" },
+        "PSN": { label: "PSN", emoji: "☠️", color: "#4c1d95", bg: "#ddd6fe" },
+        "TOX": { label: "TOX", emoji: "☠️", color: "#3b0764", bg: "#e9d5ff" },
+        "PAR": { label: "PAR", emoji: "⚡", color: "#713f12", bg: "#fef08a" },
+        "SLP": { label: "SLP", emoji: "💤", color: "#1e293b", bg: "#e2e8f0" },
+        "FRZ": { label: "FRZ", emoji: "❄️", color: "#0c4a6e", bg: "#bae6fd" },
+        "CNF": { label: "CNF", emoji: "😵", color: "#7c2d12", bg: "#fed7aa" },
+        "INF": { label: "INF", emoji: "💕", color: "#831843", bg: "#fbcfe8" },
     };
 
     let myRole = "p1";       
@@ -405,6 +477,26 @@
         });
     }
 
+    // Helper: update an HP bar element's color based on current percentage
+    function setHpBarColor(barEl, pct) {
+        barEl.style.background = pct > 50 ? "#22c55e" : pct > 20 ? "#eab308" : "#ef4444";
+        barEl.style.width = `${pct}%`;
+    }
+
+    // Helper: render a status badge in a <span>
+    function renderStatusBadge(spanEl, mon) {
+        // Collect all active statuses to show (primary + volatile)
+        const badges = [];
+        if (mon.status && statusDefs[mon.status]) {
+            const d = statusDefs[mon.status];
+            badges.push(`<span class="status-badge" style="color:${d.color};background:${d.bg}">${d.emoji} ${d.label}</span>`);
+        }
+        if (mon.confused)   badges.push(`<span class="status-badge" style="color:#7c2d12;background:#fed7aa">😵 CNF</span>`);
+        if (mon.infatuated) badges.push(`<span class="status-badge" style="color:#831843;background:#fbcfe8">💕 INF</span>`);
+        spanEl.innerHTML = badges.join("");
+        spanEl.style.display = badges.length ? "inline" : "none";
+    }
+
     function syncUserInterface(data) {
         const me = data[myRole];
         const opp = data[oppRole];
@@ -416,14 +508,14 @@
         document.getElementById('player-name').innerText = activeMe.name;
         document.getElementById('player-sprite').src = activeMe.sprite;
         document.getElementById('player-hp-text').innerText = `${activeMe.hp} / ${activeMe.maxHp}`;
-        const pPct = (activeMe.hp / activeMe.maxHp) * 100;
-        document.getElementById('player-hp').style.width = `${pPct}%`;
+        setHpBarColor(document.getElementById('player-hp'), (activeMe.hp / activeMe.maxHp) * 100);
+        renderStatusBadge(document.getElementById('player-status-badge'), activeMe);
 
         document.getElementById('opp-name').innerText = activeOpp.name;
         document.getElementById('opp-sprite').src = activeOpp.sprite;
         document.getElementById('opp-hp-text').innerText = `${activeOpp.hp} / ${activeOpp.maxHp}`;
-        const oPct = (activeOpp.hp / activeOpp.maxHp) * 100;
-        document.getElementById('opp-hp').style.width = `${oPct}%`;
+        setHpBarColor(document.getElementById('opp-hp'), (activeOpp.hp / activeOpp.maxHp) * 100);
+        renderStatusBadge(document.getElementById('opp-status-badge'), activeOpp);
 
         document.getElementById('dialogue').innerText = data.lastTurnSummary;
 
@@ -492,8 +584,9 @@
             btn.className = 'move-btn';
             const moveName = moveList ? moveList[i] : null;
             if (moveName && moveDatabase[moveName]) {
-                const type = moveDatabase[moveName].type;
-                btn.innerHTML = `<div>${moveName}</div><div class="move-type">${type}</div>`;
+                const md = moveDatabase[moveName];
+                const accText = (md.accuracy != null && md.accuracy < 100) ? ` · ${md.accuracy}%` : "";
+                btn.innerHTML = `<div>${moveName}</div><div class="move-type">${md.type}${accText}</div>`;
                 btn.onclick = () => submitActionChoice(moveName);
             } else {
                 btn.innerText = "---";
@@ -568,8 +661,101 @@
         document.querySelectorAll('.move-btn').forEach(b => b.disabled = shouldDisable);
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // STATUS ENGINE HELPERS
+    // These operate on plain mon objects (deep-copied from Firebase) so they
+    // are safe to mutate freely before writing back.
+    // ─────────────────────────────────────────────────────────────────────
+
+    // Try to apply a status to a mon. Returns false and does nothing if the
+    // mon is already immune (by type) or already has a primary status.
+    function applyStatus(mon, key) {
+        const t = mon.type || "";
+        // Volatile statuses: confusion and infatuation
+        if (key === "CNF") { mon.confused   = true; return true; }
+        if (key === "INF") { mon.infatuated = true; return true; }
+        // Primary statuses can't stack
+        if (mon.status) return false;
+        // Type immunities
+        if (key === "BRN" && t.includes("Fire"))                             return false;
+        if ((key === "PSN" || key === "TOX") && (t.includes("Poison") || t.includes("Steel"))) return false;
+        if (key === "PAR" && t.includes("Electric"))                         return false;
+        if (key === "FRZ" && t.includes("Ice"))                              return false;
+        mon.status = key;
+        // Initialise counters
+        if (key === "SLP") mon.statusCounter = Math.floor(Math.random() * 3) + 1; // 1-3 turns
+        else if (key === "TOX") mon.statusCounter = 1; // starts at 1/16
+        else mon.statusCounter = 0;
+        return true;
+    }
+
+    // Check whether a mon's status blocks it from moving this turn.
+    // Mutates mon (decrements sleep counter, thaws freeze).
+    // Returns { blocked: bool, log: string }
+    function checkStatusBlock(mon) {
+        if (mon.status === "SLP") {
+            if (mon.statusCounter > 0) {
+                mon.statusCounter--;
+                return { blocked: true, log: `${mon.name} is fast asleep!\n` };
+            }
+            mon.status = null;
+            return { blocked: false, log: `${mon.name} woke up!\n` };
+        }
+        if (mon.status === "FRZ") {
+            if (Math.random() < 0.20) {
+                mon.status = null;
+                return { blocked: false, log: `${mon.name} thawed out!\n` };
+            }
+            return { blocked: true, log: `${mon.name} is frozen solid!\n` };
+        }
+        if (mon.status === "PAR" && Math.random() < 0.25) {
+            return { blocked: true, log: `${mon.name} is fully paralyzed and can't move!\n` };
+        }
+        if (mon.infatuated && Math.random() < 0.5) {
+            return { blocked: true, log: `${mon.name} is infatuated and can't bring itself to attack!\n` };
+        }
+        return { blocked: false, log: "" };
+    }
+
+    // Handle confusion self-hit. Returns { selfHit: bool, log: string }.
+    // Mutates mon.hp on a self-hit.
+    function handleConfusion(mon) {
+        if (!mon.confused) return { selfHit: false, log: "" };
+        if (Math.random() < 0.5) {
+            const dmg = Math.max(1, Math.floor((((22 * 40 * (mon.atk || 10)) / (mon.def || 10)) / 50) + 2));
+            mon.hp = Math.max(0, mon.hp - dmg);
+            return { selfHit: true, log: `${mon.name} is confused and hurt itself! (${dmg} damage)\n` };
+        }
+        return { selfHit: false, log: `${mon.name} is confused!\n` };
+    }
+
+    // Apply end-of-turn damage (BRN / PSN / TOX). Mutates mon.hp and TOX counter.
+    // Returns a log string (may be empty).
+    function applyEndOfTurnEffects(mon) {
+        if (mon.hp <= 0) return "";
+        if (mon.status === "BRN") {
+            const dmg = Math.max(1, Math.floor(mon.maxHp / 8));
+            mon.hp = Math.max(0, mon.hp - dmg);
+            return `${mon.name} is hurt by its burn! (${dmg} damage)\n`;
+        }
+        if (mon.status === "PSN") {
+            const dmg = Math.max(1, Math.floor(mon.maxHp / 8));
+            mon.hp = Math.max(0, mon.hp - dmg);
+            return `${mon.name} is hurt by poison! (${dmg} damage)\n`;
+        }
+        if (mon.status === "TOX") {
+            const n   = mon.statusCounter || 1;
+            const dmg = Math.max(1, Math.floor(mon.maxHp / 16 * n));
+            mon.hp  = Math.max(0, mon.hp - dmg);
+            mon.statusCounter = n + 1;
+            return `${mon.name} is badly poisoned! (${dmg} damage)\n`;
+        }
+        return "";
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     function evaluateTurnCalculations(data) {
-        if (myRole !== "p1") return; 
+        if (myRole !== "p1") return;
         if (!data.actions || !data.actions.p1Move || !data.actions.p2Move) return;
 
         try {
@@ -579,28 +765,29 @@
             const act2 = data.actions.p2Move;
 
             let turnLog = "";
+
+            // ── Phase 1: Switches (before attacks, clear volatile statuses) ──
             let p1Switched = false;
             let p2Switched = false;
 
             if (act1.startsWith("SWITCH:")) {
-                // BUG FIX: parseInt(act1.split(":")) was parsing the whole
-                // ["SWITCH","1"] array (stringified to "SWITCH,1") instead of
-                // just the index, which always produced NaN and silently broke
-                // every switch. Now we grab element [1] of the split result.
                 const nextIdx = parseInt(act1.split(":")[1], 10);
                 p1.activeIndex = nextIdx;
-                turnLog += `Go, ${p1.team[p1.activeIndex].name}!\n`;
+                const switchedIn = p1.team[p1.activeIndex];
+                switchedIn.confused   = false;
+                switchedIn.infatuated = false;
+                turnLog += `P1 sent out ${switchedIn.name}!\n`;
                 p1Switched = true;
             }
-
             if (act2.startsWith("SWITCH:")) {
-                // Same fix applied here.
                 const nextIdx = parseInt(act2.split(":")[1], 10);
                 p2.activeIndex = nextIdx;
-                turnLog += `Go, ${p2.team[p2.activeIndex].name}!\n`;
+                const switchedIn = p2.team[p2.activeIndex];
+                switchedIn.confused   = false;
+                switchedIn.infatuated = false;
+                turnLog += `P2 sent out ${switchedIn.name}!\n`;
                 p2Switched = true;
             }
-
             if (p1Switched || p2Switched) turnLog += "\n";
 
             let mon1 = p1.team[p1.activeIndex];
@@ -609,42 +796,96 @@
             const p1Attacking = !p1Switched && act1 !== "WAIT";
             const p2Attacking = !p2Switched && act2 !== "WAIT";
 
-            if (p1Attacking && p2Attacking) {
-                if ((mon1.spe || 50) >= (mon2.spe || 50)) {
-                    executeAttack(mon1, mon2, act1);
-                    if (mon2.hp > 0) executeAttack(mon2, mon1, act2);
-                    else turnLog += `${mon2.name} fainted and was unable to strike!\n`;
-                } else {
-                    executeAttack(mon2, mon1, act2);
-                    if (mon1.hp > 0) executeAttack(mon1, mon2, act1);
-                    else turnLog += `${mon1.name} fainted and was unable to strike!\n`;
+            // Paralysis halves effective speed
+            const spe1 = (mon1.spe || 50) * (mon1.status === "PAR" ? 0.25 : 1);
+            const spe2 = (mon2.spe || 50) * (mon2.status === "PAR" ? 0.25 : 1);
+
+            // ── Phase 2: Attacks (in speed order, ties broken randomly) ──
+            // Closure: runs a full attack attempt for attacker → defender.
+            function tryAttack(attacker, defender, moveName) {
+                // 2a. Status block check
+                const block = checkStatusBlock(attacker);
+                if (block.log) turnLog += block.log;
+                if (block.blocked) return;
+
+                // 2b. Confusion self-damage check
+                const conf = handleConfusion(attacker);
+                if (conf.log) turnLog += conf.log;
+                if (conf.selfHit) return;
+
+                const moveData = moveDatabase[moveName];
+
+                // 2c. Accuracy check
+                const acc = (moveData && moveData.accuracy != null) ? moveData.accuracy : 100;
+                if (Math.random() * 100 >= acc) {
+                    turnLog += `${attacker.name} used ${moveName}!\nBut it missed!\n\n`;
+                    return;
                 }
-            } else if (p1Attacking && !p2Attacking) {
-                executeAttack(mon1, mon2, act1);
-            } else if (p2Attacking && !p1Attacking) {
-                executeAttack(mon2, mon1, act2);
+
+                // 2d. Damage
+                const resolution = computeDamageImpact(attacker, defender, moveName);
+                if (resolution.damage > 0) {
+                    defender.hp = Math.max(0, defender.hp - resolution.damage);
+                }
+
+                turnLog += `${attacker.name} used ${moveName}!\n`;
+                if (resolution.text) turnLog += resolution.text;
+                if (moveData && moveData.power === 0) {
+                    // Status-only move: no damage line
+                } else if (resolution.damage > 0) {
+                    turnLog += `It dealt ${resolution.damage} damage.\n`;
+                }
+                turnLog += "\n";
+
+                // 2e. Move effect: try to inflict status on the defender
+                if (moveData && moveData.effect && defender.hp > 0) {
+                    const eff = moveData.effect;
+                    if (Math.random() * 100 < eff.chance) {
+                        const applied = applyStatus(defender, eff.status);
+                        if (applied) {
+                            const sd = statusDefs[eff.status];
+                            turnLog += `${defender.name} was inflicted with ${sd ? sd.emoji + " " + sd.label : eff.status}!\n\n`;
+                        }
+                    }
+                }
             }
 
-            function executeAttack(attacker, defender, moveName) {
-                let resolution = computeDamageImpact(attacker, defender, moveName);
-                defender.hp = Math.max(0, defender.hp - resolution.damage);
-                turnLog += `${attacker.name} used ${moveName}!\n`;
-                turnLog += resolution.text + `It dealt ${resolution.damage} damage.\n\n`;
+            const p1First = spe1 > spe2 || (spe1 === spe2 && Math.random() < 0.5);
+
+            if (p1Attacking && p2Attacking) {
+                if (p1First) {
+                    tryAttack(mon1, mon2, act1);
+                    if (mon2.hp > 0) tryAttack(mon2, mon1, act2);
+                    else turnLog += `${mon2.name} fainted before it could strike!\n\n`;
+                } else {
+                    tryAttack(mon2, mon1, act2);
+                    if (mon1.hp > 0) tryAttack(mon1, mon2, act1);
+                    else turnLog += `${mon1.name} fainted before it could strike!\n\n`;
+                }
+            } else if (p1Attacking) {
+                tryAttack(mon1, mon2, act1);
+            } else if (p2Attacking) {
+                tryAttack(mon2, mon1, act2);
             }
+
+            // ── Phase 3: End-of-turn effects (burn / poison / toxic) ──
+            const eot1 = applyEndOfTurnEffects(mon1);
+            const eot2 = applyEndOfTurnEffects(mon2);
+            if (eot1 || eot2) turnLog += "\n" + eot1 + eot2;
 
             update(roomRef, {
-                p1: p1,
-                p2: p2,
-                actions: { p1Move: "", p2Move: "" }, 
+                p1,
+                p2,
+                actions: { p1Move: "", p2Move: "" },
                 lastTurnSummary: turnLog.trim(),
                 turn: data.turn + 1
             });
-            
+
         } catch (error) {
             console.error("Battle Engine Error:", error);
             update(roomRef, {
                 actions: { p1Move: "", p2Move: "" },
-                lastTurnSummary: "⚠️ A system calculation error occurred. The turn was skipped to prevent the game from freezing.",
+                lastTurnSummary: "⚠️ A system error occurred. The turn was skipped.",
                 turn: data.turn + 1
             });
         }
@@ -666,15 +907,22 @@
         const moveData = moveDatabase[moveName];
         if (!moveData) return { damage: 0, text: "The attack failed...\n" };
 
-        const base = Math.floor((((22 * moveData.power * (attacker.atk || 10)) / (defender.def || 10)) / 50) + 2);
+        // Status-only moves (power: 0) deal no damage
+        if (moveData.power === 0) return { damage: 0, text: "" };
+
+        // Burn halves Physical move damage (attacker's effective Attack)
+        const burnMod = (attacker.status === "BRN" && moveData.category === "Physical") ? 0.5 : 1;
+        const effAtk  = (attacker.atk || 10) * burnMod;
+
+        const base     = Math.floor((((22 * moveData.power * effAtk) / (defender.def || 10)) / 50) + 2);
         const typeMult = getEffectiveness(moveData.type, defender.type);
         const stabMult = (attacker.type && attacker.type.includes(moveData.type)) ? 1.5 : 1;
-        const roll = (Math.floor(Math.random() * 16) + 85) / 100;
+        const roll     = (Math.floor(Math.random() * 16) + 85) / 100;
+
+        if (typeMult === 0) return { damage: 0, text: "It had no effect!\n" };
 
         const finalDamage = Math.floor(base * typeMult * stabMult * roll);
 
-        if (typeMult === 0) return { damage: 0, text: "It had no effect!\n" };
-        
         let msg = "";
         if (typeMult > 1) msg = "It's super effective!\n";
         if (typeMult < 1) msg = "It's not very effective...\n";

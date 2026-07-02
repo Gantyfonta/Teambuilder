@@ -115,6 +115,34 @@
             margin-bottom: 5px;
         }
 
+        /* Move slot: label + select side by side */
+        .move-row {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .move-label {
+            font-size: 0.72em;
+            color: #94a3b8;
+            white-space: nowrap;
+            width: 18px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .move-row select {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* Effect badge shown below the active move select */
+        .move-effect-badge {
+            font-size: 0.68em;
+            padding: 1px 5px;
+            border-radius: 4px;
+            margin-left: 23px;   /* aligns under the select, past the label */
+            display: inline-block;
+        }
+
         /* Search Bar */
         .search-container {
             margin-bottom: 15px;
@@ -182,39 +210,95 @@
 </div>
 
 <script>
+    // ─────────────────────────────────────────────────────────────────────
+    // MOVE DATABASE  (kept in sync with battle.html)
+    // Fields: type, category, power, accuracy, effect?
+    //   category : "Physical" | "Special" | "Status"
+    //   power    : base power (0 for status-only moves)
+    //   accuracy : hit % — omit or 100 means always hits
+    //   effect   : optional { status: "<KEY>", chance: 0-100 }
+    //              status keys: BRN PSN TOX PAR SLP FRZ CNF INF
+    // ─────────────────────────────────────────────────────────────────────
     const moveDatabase = {
-        "Tackle": { type: "Normal", power: 40 },
-        "Vine Whip": { type: "Grass", power: 45 },
-        "Energy Ball": { type: "Grass", power: 90 },
-        "Sludge Bomb": { type: "Poison", power: 90 },
-        "Flamethrower": { type: "Fire", power: 90 },
-        "Water Gun": { type: "Water", power: 40 },
-        "Hydro Pump": { type: "Water", power: 110 },
-        "Chilling Water": { type: "Water", power: 50 },
-        "Thunderbolt": { type: "Electric", power: 90 },
-        "Body Slam": { type: "Normal", power: 85 },
-        "Outrage": { type: "Dragon", power: 120 },
-        "Astonish": { type: "Ghost", power: 30 },
-        "Pounce": { type: "Bug", power: 50 },
-        "Bullet Punch": { type: "Steel", power: 40 },
-        "Close Combat": { type: "Fighting", power: 120 },
-        "Vacuum Wave": { type: "Fighting", power: 40 },
-        "Rollout": { type: "Rock", power: 30 },
-        "Double-Edge": { type: "Normal", power: 120 },
-        "Shadow Ball": { type: "Ghost", power: 80 },
-        "Moonblast": { type: "Fairy", power: 95 },
-        "Detect": { type: "Fighting", power: 1 }
+        // ── Normal ──────────────────────────────────────────────────────
+        "Tackle":        { type: "Normal",   category: "Physical", power: 40,  accuracy: 100 },
+        "Body Slam":     { type: "Normal",   category: "Physical", power: 85,  accuracy: 100, effect: { status: "PAR", chance: 30 } },
+        "Double-Edge":   { type: "Normal",   category: "Physical", power: 120, accuracy: 100 },
+        "Attract":       { type: "Normal",   category: "Status",   power: 0,   accuracy: 100, effect: { status: "INF", chance: 100 } },
+
+        // ── Fire ────────────────────────────────────────────────────────
+        "Flamethrower":  { type: "Fire",     category: "Special",  power: 90,  accuracy: 100, effect: { status: "BRN", chance: 10 } },
+        "Lava Plume":    { type: "Fire",     category: "Special",  power: 80,  accuracy: 100, effect: { status: "BRN", chance: 30 } },
+        "Will-O-Wisp":   { type: "Fire",     category: "Status",   power: 0,   accuracy: 85,  effect: { status: "BRN", chance: 100 } },
+
+        // ── Water ───────────────────────────────────────────────────────
+        "Water Gun":     { type: "Water",    category: "Special",  power: 40,  accuracy: 100 },
+        "Hydro Pump":    { type: "Water",    category: "Special",  power: 110, accuracy: 80 },
+        "Chilling Water":{ type: "Water",    category: "Special",  power: 50,  accuracy: 100 },
+        "Scald":         { type: "Water",    category: "Special",  power: 80,  accuracy: 100, effect: { status: "BRN", chance: 30 } },
+
+        // ── Grass ───────────────────────────────────────────────────────
+        "Vine Whip":     { type: "Grass",    category: "Physical", power: 45,  accuracy: 100 },
+        "Energy Ball":   { type: "Grass",    category: "Special",  power: 90,  accuracy: 100 },
+        "Sleep Powder":  { type: "Grass",    category: "Status",   power: 0,   accuracy: 75,  effect: { status: "SLP", chance: 100 } },
+        "Spore":         { type: "Grass",    category: "Status",   power: 0,   accuracy: 100, effect: { status: "SLP", chance: 100 } },
+
+        // ── Electric ────────────────────────────────────────────────────
+        "Thunderbolt":   { type: "Electric", category: "Special",  power: 90,  accuracy: 100, effect: { status: "PAR", chance: 10 } },
+        "Discharge":     { type: "Electric", category: "Special",  power: 80,  accuracy: 100, effect: { status: "PAR", chance: 30 } },
+        "Thunder Wave":  { type: "Electric", category: "Status",   power: 0,   accuracy: 90,  effect: { status: "PAR", chance: 100 } },
+
+        // ── Poison ──────────────────────────────────────────────────────
+        "Sludge Bomb":   { type: "Poison",   category: "Special",  power: 90,  accuracy: 100, effect: { status: "PSN", chance: 30 } },
+        "Toxic":         { type: "Poison",   category: "Status",   power: 0,   accuracy: 90,  effect: { status: "TOX", chance: 100 } },
+
+        // ── Ghost ───────────────────────────────────────────────────────
+        "Shadow Ball":   { type: "Ghost",    category: "Special",  power: 80,  accuracy: 100 },
+        "Astonish":      { type: "Ghost",    category: "Physical", power: 30,  accuracy: 100 },
+        "Confuse Ray":   { type: "Ghost",    category: "Status",   power: 0,   accuracy: 100, effect: { status: "CNF", chance: 100 } },
+
+        // ── Fairy ───────────────────────────────────────────────────────
+        "Moonblast":     { type: "Fairy",    category: "Special",  power: 95,  accuracy: 100 },
+
+        // ── Fighting ────────────────────────────────────────────────────
+        "Close Combat":  { type: "Fighting", category: "Physical", power: 120, accuracy: 100 },
+        "Vacuum Wave":   { type: "Fighting", category: "Special",  power: 40,  accuracy: 100 },
+        "Detect":        { type: "Fighting", category: "Status",   power: 0,   accuracy: 100 },
+
+        // ── Bug ─────────────────────────────────────────────────────────
+        "Pounce":        { type: "Bug",      category: "Physical", power: 50,  accuracy: 100 },
+
+        // ── Steel ───────────────────────────────────────────────────────
+        "Bullet Punch":  { type: "Steel",    category: "Physical", power: 40,  accuracy: 100 },
+
+        // ── Dragon ──────────────────────────────────────────────────────
+        "Outrage":       { type: "Dragon",   category: "Physical", power: 120, accuracy: 100 },
+
+        // ── Rock ────────────────────────────────────────────────────────
+        "Rollout":       { type: "Rock",     category: "Physical", power: 30,  accuracy: 90 },
+    };
+
+    // Display info for each status key (used in move effect badges)
+    const statusDefs = {
+        "BRN": { label: "BRN", emoji: "🔥", color: "#7f1d1d", bg: "#fecaca" },
+        "PSN": { label: "PSN", emoji: "☠️", color: "#4c1d95", bg: "#ddd6fe" },
+        "TOX": { label: "TOX", emoji: "☠️", color: "#3b0764", bg: "#e9d5ff" },
+        "PAR": { label: "PAR", emoji: "⚡", color: "#713f12", bg: "#fef08a" },
+        "SLP": { label: "SLP", emoji: "💤", color: "#1e293b", bg: "#e2e8f0" },
+        "FRZ": { label: "FRZ", emoji: "❄️", color: "#0c4a6e", bg: "#bae6fd" },
+        "CNF": { label: "CNF", emoji: "😵", color: "#7c2d12", bg: "#fed7aa" },
+        "INF": { label: "INF", emoji: "💕", color: "#831843", bg: "#fbcfe8" },
     };
 
     const pokemonDatabase = [
-        { id: 1, name: "Chewer", type: "Ground", sprite: "sprites/Chewer.png", emoji: "🌍", abilities: ["Simple", "Unaware"], stats: { hp: 59, atk: 45, def: 40, spe: 31 }, learnset: ["Tackle", "Rollout", "Double-Edge", "Thunderbolt"] },
-        { id: 4, name: "Apptle", type: "Grass/Ghost", sprite: "sprites/Apptle.png", emoji: "🪴👻", abilities: ["Ripen", "Gluttony"], stats: { hp: 50, atk: 30, def: 55, spe: 20 }, learnset: ["Astonish", "Pounce", "Energy Ball", "Shadow Ball"] },
-        { id: 7, name: "Suctopus", type: "Water", sprite: "sprites/Suctopus.png", emoji: "💧", abilities: ["Torrent", "Limber"], stats: { hp: 80, atk: 118, def: 90, spe: 42 }, learnset: ["Detect", "Close Combat", "Hydro Pump", "Chilling Water", "Vacuum Wave"] },
-        { id: 25, name: "Gourdtle", type: "Grass/Ghost", sprite: "sprites/Gourdtle.png", emoji: "🪴👻", abilities: ["Ripen", "Insomnia"], stats: { hp: 65, atk: 90, def: 122, spe: 84 }, learnset: ["Astonish", "Pounce", "Energy Ball", "Shadow Ball"] },
-        { id: 94, name: "Pumpkintle", type: "Ghost/Poison", sprite: "sprites/Pumpkintle.png", emoji: "🪴👻", abilities: ["Cursed Body", "Insomnia"], stats: { hp: 140, atk: 95, def: 130, spe: 84 }, learnset: ["Astonish", "Pounce", "Energy Ball", "Shadow Ball", "Sludge Bomb", "Moonblast"] },
-        { id: 143, name: "Slamamander", type: "Fighting", sprite: "sprites/Slamamander.png", emoji: "🥊", abilities: ["Immunity", "Thick Fat", "Gluttony"], stats: { hp: 240, atk: 110, def: 65, spe: 30 }, learnset: ["Tackle", "Body Slam"] },
-        { id: 149, name: "Dragonite", type: "Dragon/Flying", sprite: "sprites/dragonite.png", emoji: "🐉", abilities: ["Inner Focus", "Multiscale"], stats: { hp: 171, atk: 134, def: 95, spe: 80 }, learnset: ["Tackle", "Outrage"] },
-        { id: 212, name: "Scizor", type: "Bug/Steel", sprite: "sprites/scizor.png", emoji: "✂️", abilities: ["Swarm", "Technician", "Light Metal"], stats: { hp: 150, atk: 130, def: 100, spe: 65 }, learnset: ["Tackle", "Bullet Punch"] }
+        { id: 1,   name: "Chewer",      type: "Ground",       sprite: "sprites/Chewer.png",      emoji: "🌍",    abilities: ["Simple", "Unaware"],                         stats: { hp: 59,  atk: 45,  def: 40,  spe: 31 }, learnset: ["Tackle", "Rollout", "Double-Edge", "Thunderbolt", "Toxic", "Body Slam"] },
+        { id: 4,   name: "Apptle",      type: "Grass/Ghost",  sprite: "sprites/Apptle.png",      emoji: "🪴👻",  abilities: ["Ripen", "Gluttony"],                         stats: { hp: 50,  atk: 30,  def: 55,  spe: 20 }, learnset: ["Astonish", "Pounce", "Energy Ball", "Shadow Ball", "Sleep Powder", "Confuse Ray"] },
+        { id: 7,   name: "Suctopus",    type: "Water",        sprite: "sprites/Suctopus.png",    emoji: "💧",    abilities: ["Torrent", "Limber"],                         stats: { hp: 80,  atk: 118, def: 90,  spe: 42 }, learnset: ["Detect", "Close Combat", "Hydro Pump", "Chilling Water", "Vacuum Wave", "Scald"] },
+        { id: 25,  name: "Gourdtle",    type: "Grass/Ghost",  sprite: "sprites/Gourdtle.png",    emoji: "🪴👻",  abilities: ["Ripen", "Insomnia"],                         stats: { hp: 65,  atk: 90,  def: 122, spe: 84 }, learnset: ["Astonish", "Pounce", "Energy Ball", "Shadow Ball", "Sleep Powder", "Confuse Ray"] },
+        { id: 94,  name: "Pumpkintle",  type: "Ghost/Poison", sprite: "sprites/Pumpkintle.png",  emoji: "🪴👻",  abilities: ["Cursed Body", "Insomnia"],                   stats: { hp: 140, atk: 95,  def: 130, spe: 84 }, learnset: ["Astonish", "Pounce", "Energy Ball", "Shadow Ball", "Sludge Bomb", "Moonblast", "Toxic", "Confuse Ray", "Will-O-Wisp"] },
+        { id: 143, name: "Slamamander", type: "Fighting",     sprite: "sprites/Slamamander.png", emoji: "🥊",    abilities: ["Immunity", "Thick Fat", "Gluttony"],         stats: { hp: 240, atk: 110, def: 65,  spe: 30 }, learnset: ["Tackle", "Body Slam", "Close Combat", "Toxic"] },
+        { id: 149, name: "Dragonite",   type: "Dragon/Flying", sprite: "sprites/dragonite.png",  emoji: "🐉",    abilities: ["Inner Focus", "Multiscale"],                 stats: { hp: 171, atk: 134, def: 95,  spe: 80 }, learnset: ["Tackle", "Outrage", "Attract"] },
+        { id: 212, name: "Scizor",      type: "Bug/Steel",    sprite: "sprites/scizor.png",      emoji: "✂️",    abilities: ["Swarm", "Technician", "Light Metal"],        stats: { hp: 150, atk: 130, def: 100, spe: 65 }, learnset: ["Tackle", "Bullet Punch", "Toxic"] }
     ];
 
     let currentTeam = [null, null, null, null, null, null]; 
@@ -243,6 +327,38 @@
         }
     }
 
+    // Build a human-readable summary string for a move option label
+    function moveSummary(moveName) {
+        const md = moveDatabase[moveName];
+        if (!md) return moveName;
+        const catAbbr = md.category === "Physical" ? "Ph" : md.category === "Special" ? "Sp" : "St";
+        const accPart  = (md.accuracy != null && md.accuracy < 100) ? ` ${md.accuracy}%` : "";
+        const pwrPart  = md.power > 0 ? ` ${md.power}BP` : "";
+        let effPart = "";
+        if (md.effect) {
+            const sd = statusDefs[md.effect.status];
+            const label = sd ? sd.emoji + sd.label : md.effect.status;
+            effPart = md.effect.chance < 100 ? ` [${label} ${md.effect.chance}%]` : ` [${label}]`;
+        }
+        return `${moveName} — ${md.type} · ${catAbbr}${pwrPart}${accPart}${effPart}`;
+    }
+
+    // Build a styled badge element for a move's effect (shown below the select)
+    function buildEffectBadge(moveName) {
+        if (!moveName) return null;
+        const md = moveDatabase[moveName];
+        if (!md || !md.effect) return null;
+        const sd = statusDefs[md.effect.status];
+        if (!sd) return null;
+        const span = document.createElement('span');
+        span.className = 'move-effect-badge';
+        span.style.color      = sd.color;
+        span.style.background = sd.bg;
+        const chanceText = md.effect.chance < 100 ? ` ${md.effect.chance}% chance` : "";
+        span.textContent = `${sd.emoji} ${sd.label}${chanceText}`;
+        return span;
+    }
+
     function renderTeam() {
         teamContainer.innerHTML = '';
         currentTeam.forEach((slotData, slotIndex) => {
@@ -252,25 +368,12 @@
                 slotEl.className = 'slot filled';
                 const p = slotData.pokemon;
                 
+                // Ability select
                 let abilityOptionsHTML = `<option value="">Select Ability</option>`;
                 p.abilities.forEach(ability => {
                     const isSelected = slotData.ability === ability ? 'selected' : '';
                     abilityOptionsHTML += `<option value="${ability}" ${isSelected}>${ability}</option>`;
                 });
-                const abilitySelectHTML = `<select class="ability-select" onchange="updateAbility(${slotIndex}, this.value)">${abilityOptionsHTML}</select>`;
-
-                let moveSelectsHTML = '';
-                for(let i = 0; i < 4; i++) {
-                    let optionsHTML = `<option value="">Select Move ${i+1}</option>`;
-                    p.learnset.forEach(moveName => {
-                        const isSelected = slotData.moves[i] === moveName ? 'selected' : '';
-                        const moveInfo = moveDatabase[moveName];
-                        const powerText = moveInfo && moveInfo.power ? ` (BP: ${moveInfo.power})` : '';
-                        optionsHTML += `<option value="${moveName}" ${isSelected}>${moveName}${powerText}</option>`;
-                    });
-                    
-                    moveSelectsHTML += `<select onchange="updateMove(${slotIndex}, ${i}, this.value)">${optionsHTML}</select>`;
-                }
 
                 slotEl.innerHTML = `
                     <button class="remove-btn" onclick="removePokemon(${slotIndex})" title="Remove Pokémon">X</button>
@@ -278,16 +381,77 @@
                     <strong>${p.name}</strong>
                     <div style="font-size: 0.75em; color: #64748b;">A:${p.stats.atk} D:${p.stats.def} S:${p.stats.spe}</div>
                     <div class="dropdowns-container">
-                        ${abilitySelectHTML}
-                        ${moveSelectsHTML}
+                        <select class="ability-select" onchange="updateAbility(${slotIndex}, this.value)">${abilityOptionsHTML}</select>
+                        <div id="moves-${slotIndex}"></div>
                     </div>
                 `;
+                teamContainer.appendChild(slotEl);
+
+                // Build the 4 move rows with effect badges
+                const movesContainer = document.getElementById(`moves-${slotIndex}`);
+                for (let i = 0; i < 4; i++) {
+                    const currentMove = slotData.moves[i] || "";
+
+                    // Row: small label + select
+                    const row = document.createElement('div');
+                    row.className = 'move-row';
+
+                    const label = document.createElement('span');
+                    label.className = 'move-label';
+                    label.textContent = `M${i + 1}`;
+
+                    const sel = document.createElement('select');
+                    sel.id = `move-sel-${slotIndex}-${i}`;
+
+                    // Blank option
+                    const blank = document.createElement('option');
+                    blank.value = "";
+                    blank.textContent = `— Move ${i + 1} —`;
+                    sel.appendChild(blank);
+
+                    // One option per learnable move
+                    p.learnset.forEach(moveName => {
+                        const opt = document.createElement('option');
+                        opt.value = moveName;
+                        opt.textContent = moveSummary(moveName);
+                        if (currentMove === moveName) opt.selected = true;
+                        sel.appendChild(opt);
+                    });
+
+                    sel.onchange = () => {
+                        updateMove(slotIndex, i, sel.value);
+                        refreshEffectBadge(slotIndex, i, sel.value);
+                    };
+
+                    row.appendChild(label);
+                    row.appendChild(sel);
+                    movesContainer.appendChild(row);
+
+                    // Effect badge placeholder (one per move slot)
+                    const badgeWrap = document.createElement('div');
+                    badgeWrap.id = `badge-${slotIndex}-${i}`;
+                    badgeWrap.style.minHeight = "16px";
+                    movesContainer.appendChild(badgeWrap);
+
+                    // Show badge for any already-selected move
+                    refreshEffectBadge(slotIndex, i, currentMove);
+                }
+
             } else {
                 slotEl.className = 'slot';
                 slotEl.innerHTML = `<span style="color: #94a3b8;">Empty Slot</span>`;
+                teamContainer.appendChild(slotEl);
             }
-            teamContainer.appendChild(slotEl);
         });
+    }
+
+    // Refresh (or clear) the effect badge below a given move select
+    function refreshEffectBadge(slotIndex, moveIndex, moveName) {
+        const wrap = document.getElementById(`badge-${slotIndex}-${moveIndex}`);
+        if (!wrap) return;
+        wrap.innerHTML = "";
+        const badge = buildEffectBadge(moveName);
+        if (badge) wrap.appendChild(badge);
     }
 
     function renderRoster(searchQuery = '') {

@@ -195,7 +195,7 @@
 
 <div class="container">
     <div class="header">
-        <h1>⚔️ Teambuilder v5 (Fixed)</h1>
+        <h1>⚔️ Teambuilder v6</h1>
         <a href="index.html" class="home-btn">🏠 Main Menu</a>
     </div>
     
@@ -279,6 +279,13 @@
 
         // ── Dark ────────────────────────────────────────────────────────
         "Brutal Swing":       { type: "Dark",     category: "Physical", power: 60,  accuracy: 100 },
+
+        // ── Ice ────────────────────────────────────────────────────────
+        "Freeze-Dry":       { type: "Ice",     category: "Special", power: 70,  accuracy: 100 },
+        "Ice Punch ":       { type: "Physical",     category: "Special", power: 75,  accuracy: 100, effect: { status: "FRZ", chance: 10 } },
+
+
+        
     };
 
     // Display info for each status key (used in move effect badges)
@@ -300,7 +307,7 @@
         { id: 25,  name: "Gourdtle",    type: "Grass/Ghost",  sprite: "sprites/Gourdtle.png",    emoji: "🪴👻",  abilities: ["Ripen", "Insomnia"],                         stats: { hp: 65,  atk: 90,  def: 122, spe: 84 }, learnset: ["Astonish", "Pounce", "Energy Ball", "Shadow Ball", "Sleep Powder", "Confuse Ray"] },
         { id: 94,  name: "Pumpkintle",  type: "Ghost/Poison", sprite: "sprites/Pumpkintle.png",  emoji: "🪴👻",  abilities: ["Cursed Body", "Insomnia"],                   stats: { hp: 140, atk: 95,  def: 130, spe: 84 }, learnset: ["Astonish", "Pounce", "Energy Ball", "Shadow Ball", "Sleep Powder", "Sludge Bomb", "Moonblast", "Toxic", "Confuse Ray", "Will-O-Wisp"] },
         { id: 143, name: "Slamamander", type: "Fighting",     sprite: "sprites/Slamamander.png", emoji: "🥊",    abilities: ["Mold Breaker", "No Guard"],                  stats: { hp: 240, atk: 110, def: 65,  spe: 30 }, learnset: ["Brutal Swing", "Body Slam", "Close Combat", "Toxic"] },
-        { id: 149, name: "Chefsberg",   type: "Ice/Normal", sprite: "sprites/Chefsberg.png",  emoji: "🥃😐",    abilities: ["Sweet Scent", "Gluttony"],                    stats: { hp: 105, atk: 95, def: 130,  spe: 35 }, learnset: ["Tackle", "Outrage", "Attract"] },
+        { id: 149, name: "Chefsberg",   type: "Ice/Normal", sprite: "sprites/Chefsberg.png",  emoji: "🥃😐",    abilities: ["Sweet Scent", "Gluttony"],                    stats: { hp: 105, atk: 95, def: 130,  spe: 35 }, learnset: ["Freeze-Dry", "Ice-Punch", "Attract", "Chilling Water" },
         { id: 212, name: "Scizor",      type: "Bug/Steel",    sprite: "sprites/scizor.png",      emoji: "✂️",    abilities: ["Swarm", "Technician", "Light Metal"],        stats: { hp: 150, atk: 130, def: 100, spe: 65 }, learnset: ["Tackle", "Bullet Punch", "Toxic"] }
     ];
 

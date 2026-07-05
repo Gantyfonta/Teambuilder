@@ -285,69 +285,199 @@
         "Dragon": { "Steel": 0.5, "Dragon": 2.0 }
     };
 
-    // ─────────────────────────────────────────────────────────────────────
-    // MOVE DATABASE
-    // Each entry: { type, category, power, accuracy, effect? }
+   // ─────────────────────────────────────────────────────────────────────
+    // MOVE DATABASE  (kept in sync with battle.html)
+    // Fields: type, category, power, accuracy, effect?
     //   category : "Physical" | "Special" | "Status"
     //   power    : base power (0 for status-only moves)
-    //   accuracy : hit chance 0-100 (omit or 100 = always hits)
+    //   accuracy : hit % — omit or 100 means always hits
     //   effect   : optional { status: "<KEY>", chance: 0-100 }
     //              status keys: BRN PSN TOX PAR SLP FRZ CNF INF
     // ─────────────────────────────────────────────────────────────────────
     const moveDatabase = {
         // ── Normal ──────────────────────────────────────────────────────
         "Tackle":        { type: "Normal",   category: "Physical", power: 40,  accuracy: 100 },
+        "Quick Attack":  { type: "Normal",   category: "Physical", power: 40,  accuracy: 100 },
+        "Slash":         { type: "Normal",   category: "Physical", power: 70,  accuracy: 100 },
         "Body Slam":     { type: "Normal",   category: "Physical", power: 85,  accuracy: 100, effect: { status: "PAR", chance: 30 } },
         "Double-Edge":   { type: "Normal",   category: "Physical", power: 120, accuracy: 100 },
+        "Giga Impact":   { type: "Normal",   category: "Physical", power: 150, accuracy: 90 },
+        "Tri Attack":    { type: "Normal",   category: "Special",  power: 80,  accuracy: 100, effect: { status: "PAR", chance: 20 } },
+        "Hyper Voice":   { type: "Normal",   category: "Special",  power: 90,  accuracy: 100 },
         "Attract":       { type: "Normal",   category: "Status",   power: 0,   accuracy: 100, effect: { status: "INF", chance: 100 } },
+        "Sing":          { type: "Normal",   category: "Status",   power: 0,   accuracy: 55,  effect: { status: "SLP", chance: 100 } },
+        "Glare":         { type: "Normal",   category: "Status",   power: 0,   accuracy: 100, effect: { status: "PAR", chance: 100 } },
+        "Supersonic":    { type: "Normal",   category: "Status",   power: 0,   accuracy: 55,  effect: { status: "CNF", chance: 100 } },
 
         // ── Fire ────────────────────────────────────────────────────────
-        "Flamethrower":  { type: "Fire",     category: "Special",  power: 90,  accuracy: 100, effect: { status: "BRN", chance: 10 } },
+        "Ember":         { type: "Fire",     category: "Special",  power: 40,  accuracy: 100, effect: { status: "BRN", chance: 10 } },
+        "Flame Charge":  { type: "Fire",     category: "Physical", power: 50,  accuracy: 100 },
+        "Fire Punch":    { type: "Fire",     category: "Physical", power: 75,  accuracy: 100, effect: { status: "BRN", chance: 10 } },
         "Lava Plume":    { type: "Fire",     category: "Special",  power: 80,  accuracy: 100, effect: { status: "BRN", chance: 30 } },
+        "Flamethrower":  { type: "Fire",     category: "Special",  power: 90,  accuracy: 100, effect: { status: "BRN", chance: 10 } },
+        "Heat Wave":     { type: "Fire",     category: "Special",  power: 95,  accuracy: 90,  effect: { status: "BRN", chance: 10 } },
+        "Fire Blast":    { type: "Fire",     category: "Special",  power: 110, accuracy: 85,  effect: { status: "BRN", chance: 10 } },
+        "Flare Blitz":   { type: "Fire",     category: "Physical", power: 120, accuracy: 100, effect: { status: "BRN", chance: 10 } },
+        "Overheat":      { type: "Fire",     category: "Special",  power: 130, accuracy: 90 },
         "Will-O-Wisp":   { type: "Fire",     category: "Status",   power: 0,   accuracy: 85,  effect: { status: "BRN", chance: 100 } },
 
         // ── Water ───────────────────────────────────────────────────────
         "Water Gun":     { type: "Water",    category: "Special",  power: 40,  accuracy: 100 },
-        "Hydro Pump":    { type: "Water",    category: "Special",  power: 110, accuracy: 80 },
+        "Aqua Jet":      { type: "Water",    category: "Physical", power: 40,  accuracy: 100 },
         "Chilling Water":{ type: "Water",    category: "Special",  power: 50,  accuracy: 100 },
+        "Water Pulse":   { type: "Water",    category: "Special",  power: 60,  accuracy: 100, effect: { status: "CNF", chance: 20 } },
+        "Bubble Beam":   { type: "Water",    category: "Special",  power: 65,  accuracy: 100 },
         "Scald":         { type: "Water",    category: "Special",  power: 80,  accuracy: 100, effect: { status: "BRN", chance: 30 } },
+        "Waterfall":     { type: "Water",    category: "Physical", power: 80,  accuracy: 100 },
+        "Surf":          { type: "Water",    category: "Special",  power: 90,  accuracy: 100 },
+        "Aqua Tail":     { type: "Water",    category: "Physical", power: 90,  accuracy: 90 },
+        "Crabhammer":    { type: "Water",    category: "Physical", power: 100, accuracy: 90 },
+        "Hydro Pump":    { type: "Water",    category: "Special",  power: 110, accuracy: 80 },
 
         // ── Grass ───────────────────────────────────────────────────────
         "Vine Whip":     { type: "Grass",    category: "Physical", power: 45,  accuracy: 100 },
+        "Razor Leaf":    { type: "Grass",    category: "Physical", power: 55,  accuracy: 95 },
+        "Giga Drain":    { type: "Grass",    category: "Special",  power: 75,  accuracy: 100 },
+        "Seed Bomb":     { type: "Grass",    category: "Physical", power: 80,  accuracy: 100 },
         "Energy Ball":   { type: "Grass",    category: "Special",  power: 90,  accuracy: 100 },
+        "Petal Blizzard":{ type: "Grass",    category: "Physical", power: 90,  accuracy: 100 },
+        "Wood Hammer":   { type: "Grass",    category: "Physical", power: 120, accuracy: 100 },
+        "Leaf Storm":    { type: "Grass",    category: "Special",  power: 130, accuracy: 90 },
         "Sleep Powder":  { type: "Grass",    category: "Status",   power: 0,   accuracy: 75,  effect: { status: "SLP", chance: 100 } },
         "Spore":         { type: "Grass",    category: "Status",   power: 0,   accuracy: 100, effect: { status: "SLP", chance: 100 } },
+        "Stun Spore":    { type: "Grass",    category: "Status",   power: 0,   accuracy: 75,  effect: { status: "PAR", chance: 100 } },
 
         // ── Electric ────────────────────────────────────────────────────
-        "Thunderbolt":   { type: "Electric", category: "Special",  power: 90,  accuracy: 100, effect: { status: "PAR", chance: 10 } },
+        "Thunder Shock": { type: "Electric", category: "Special",  power: 40,  accuracy: 100, effect: { status: "PAR", chance: 10 } },
+        "Thunder Punch": { type: "Electric", category: "Physical", power: 75,  accuracy: 100, effect: { status: "PAR", chance: 10 } },
         "Discharge":     { type: "Electric", category: "Special",  power: 80,  accuracy: 100, effect: { status: "PAR", chance: 30 } },
+        "Thunderbolt":   { type: "Electric", category: "Special",  power: 90,  accuracy: 100, effect: { status: "PAR", chance: 10 } },
+        "Wild Charge":   { type: "Electric", category: "Physical", power: 90,  accuracy: 100 },
+        "Thunder":       { type: "Electric", category: "Special",  power: 110, accuracy: 70,  effect: { status: "PAR", chance: 30 } },
+        "Volt Tackle":   { type: "Electric", category: "Physical", power: 120, accuracy: 100, effect: { status: "PAR", chance: 10 } },
+        "Zap Cannon":    { type: "Electric", category: "Special",  power: 120, accuracy: 50,  effect: { status: "PAR", chance: 100 } },
         "Thunder Wave":  { type: "Electric", category: "Status",   power: 0,   accuracy: 90,  effect: { status: "PAR", chance: 100 } },
 
         // ── Poison ──────────────────────────────────────────────────────
+        "Smog":          { type: "Poison",   category: "Special",  power: 30,  accuracy: 70,  effect: { status: "PSN", chance: 40 } },
+        "Acid":          { type: "Poison",   category: "Special",  power: 40,  accuracy: 100 },
+        "Cross Poison":  { type: "Poison",   category: "Physical", power: 70,  accuracy: 100, effect: { status: "PSN", chance: 10 } },
+        "Poison Jab":    { type: "Poison",   category: "Physical", power: 80,  accuracy: 100, effect: { status: "PSN", chance: 30 } },
         "Sludge Bomb":   { type: "Poison",   category: "Special",  power: 90,  accuracy: 100, effect: { status: "PSN", chance: 30 } },
+        "Sludge Wave":   { type: "Poison",   category: "Special",  power: 95,  accuracy: 100, effect: { status: "PSN", chance: 10 } },
+        "Gunk Shot":     { type: "Poison",   category: "Physical", power: 120, accuracy: 80,  effect: { status: "PSN", chance: 30 } },
         "Toxic":         { type: "Poison",   category: "Status",   power: 0,   accuracy: 90,  effect: { status: "TOX", chance: 100 } },
+        "Poison Gas":    { type: "Poison",   category: "Status",   power: 0,   accuracy: 90,  effect: { status: "PSN", chance: 100 } },
 
         // ── Ghost ───────────────────────────────────────────────────────
-        "Shadow Ball":   { type: "Ghost",    category: "Special",  power: 80,  accuracy: 100 },
         "Astonish":      { type: "Ghost",    category: "Physical", power: 30,  accuracy: 100 },
+        "Lick":          { type: "Ghost",    category: "Physical", power: 30,  accuracy: 100, effect: { status: "PAR", chance: 30 } },
+        "Hex":           { type: "Ghost",    category: "Special",  power: 65,  accuracy: 100 },
+        "Shadow Claw":   { type: "Ghost",    category: "Physical", power: 70,  accuracy: 100 },
+        "Shadow Ball":   { type: "Ghost",    category: "Special",  power: 80,  accuracy: 100 },
+        "Phantom Force": { type: "Ghost",    category: "Physical", power: 90,  accuracy: 100 },
+        "Poltergeist":   { type: "Ghost",    category: "Physical", power: 110, accuracy: 90 },
         "Confuse Ray":   { type: "Ghost",    category: "Status",   power: 0,   accuracy: 100, effect: { status: "CNF", chance: 100 } },
 
+        // ── Fairy ───────────────────────────────────────────────────────
+        "Fairy Wind":    { type: "Fairy",    category: "Special",  power: 40,  accuracy: 100 },
+        "Draining Kiss": { type: "Fairy",    category: "Special",  power: 50,  accuracy: 100 },
+        "Dazzling Gleam":{ type: "Fairy",    category: "Special",  power: 80,  accuracy: 100 },
+        "Play Rough":    { type: "Fairy",    category: "Physical", power: 90,  accuracy: 90 },
+        "Moonblast":     { type: "Fairy",    category: "Special",  power: 95,  accuracy: 100 },
+        "Sweet Kiss":    { type: "Fairy",    category: "Status",   power: 0,   accuracy: 75,  effect: { status: "CNF", chance: 100 } },
+
         // ── Fighting ────────────────────────────────────────────────────
-        "Close Combat":  { type: "Fighting", category: "Physical", power: 120, accuracy: 100 },
+        "Mach Punch":    { type: "Fighting", category: "Physical", power: 40,  accuracy: 100 },
         "Vacuum Wave":   { type: "Fighting", category: "Special",  power: 40,  accuracy: 100 },
+        "Brick Break":   { type: "Fighting", category: "Physical", power: 75,  accuracy: 100 },
+        "Aura Sphere":   { type: "Fighting", category: "Special",  power: 80,  accuracy: 100 },
+        "Cross Chop":    { type: "Fighting", category: "Physical", power: 100, accuracy: 80 },
+        "Dynamic Punch": { type: "Fighting", category: "Physical", power: 100, accuracy: 50,  effect: { status: "CNF", chance: 100 } },
+        "Close Combat":  { type: "Fighting", category: "Physical", power: 120, accuracy: 100 },
+        "Superpower":    { type: "Fighting", category: "Physical", power: 120, accuracy: 100 },
         "Detect":        { type: "Fighting", category: "Status",   power: 0,   accuracy: 100 },
 
         // ── Bug ─────────────────────────────────────────────────────────
         "Pounce":        { type: "Bug",      category: "Physical", power: 50,  accuracy: 100 },
+        "Struggle Bug":  { type: "Bug",      category: "Special",  power: 50,  accuracy: 100 },
+        "U-turn":        { type: "Bug",      category: "Physical", power: 70,  accuracy: 100 },
+        "X-Scissor":     { type: "Bug",      category: "Physical", power: 80,  accuracy: 100 },
+        "Leech Life":    { type: "Bug",      category: "Physical", power: 80,  accuracy: 100 },
+        "Bug Buzz":      { type: "Bug",      category: "Special",  power: 90,  accuracy: 100 },
+        "Megahorn":      { type: "Bug",      category: "Physical", power: 120, accuracy: 85 },
 
         // ── Steel ───────────────────────────────────────────────────────
         "Bullet Punch":  { type: "Steel",    category: "Physical", power: 40,  accuracy: 100 },
+        "Metal Claw":    { type: "Steel",    category: "Physical", power: 50,  accuracy: 95 },
+        "Steel Wing":    { type: "Steel",    category: "Physical", power: 70,  accuracy: 90 },
+        "Iron Head":     { type: "Steel",    category: "Physical", power: 80,  accuracy: 100 },
+        "Flash Cannon":  { type: "Steel",    category: "Special",  power: 80,  accuracy: 100 },
+        "Meteor Mash":   { type: "Steel",    category: "Physical", power: 90,  accuracy: 90 },
+        "Iron Tail":     { type: "Steel",    category: "Physical", power: 100, accuracy: 75 },
 
         // ── Dragon ──────────────────────────────────────────────────────
+        "Twister":       { type: "Dragon",   category: "Special",  power: 40,  accuracy: 100 },
+        "Dragon Breath": { type: "Dragon",   category: "Special",  power: 60,  accuracy: 100, effect: { status: "PAR", chance: 30 } },
+        "Dragon Claw":   { type: "Dragon",   category: "Physical", power: 80,  accuracy: 100 },
+        "Dragon Pulse":  { type: "Dragon",   category: "Special",  power: 85,  accuracy: 100 },
+        "Dragon Rush":   { type: "Dragon",   category: "Physical", power: 100, accuracy: 75 },
         "Outrage":       { type: "Dragon",   category: "Physical", power: 120, accuracy: 100 },
+        "Draco Meteor":  { type: "Dragon",   category: "Special",  power: 130, accuracy: 90 },
 
         // ── Rock ────────────────────────────────────────────────────────
         "Rollout":       { type: "Rock",     category: "Physical", power: 30,  accuracy: 90 },
+        "Rock Throw":    { type: "Rock",     category: "Physical", power: 50,  accuracy: 90 },
+        "Rock Tomb":     { type: "Rock",     category: "Physical", power: 60,  accuracy: 95 },
+        "Rock Slide":    { type: "Rock",     category: "Physical", power: 75,  accuracy: 90 },
+        "Power Gem":     { type: "Rock",     category: "Special",  power: 80,  accuracy: 100 },
+        "Stone Edge":    { type: "Rock",     category: "Physical", power: 100, accuracy: 80 },
+        "Head Smash":    { type: "Rock",     category: "Physical", power: 150, accuracy: 80 },
+
+        // ── Dark ────────────────────────────────────────────────────────
+        "Bite":          { type: "Dark",     category: "Physical", power: 60,  accuracy: 100 },
+        "Brutal Swing":  { type: "Dark",     category: "Physical", power: 60,  accuracy: 100 },
+        "Knock Off":     { type: "Dark",     category: "Physical", power: 65,  accuracy: 100 },
+        "Sucker Punch":  { type: "Dark",     category: "Physical", power: 70,  accuracy: 100 },
+        "Crunch":        { type: "Dark",     category: "Physical", power: 80,  accuracy: 100 },
+        "Dark Pulse":    { type: "Dark",     category: "Special",  power: 80,  accuracy: 100 },
+        "Foul Play":     { type: "Dark",     category: "Physical", power: 95,  accuracy: 100 },
+
+        // ── Ice ─────────────────────────────────────────────────────────
+        "Powder Snow":   { type: "Ice",      category: "Special",  power: 40,  accuracy: 100, effect: { status: "FRZ", chance: 10 } },
+        "Ice Shard":     { type: "Ice",      category: "Physical", power: 40,  accuracy: 100 },
+        "Aurora Beam":   { type: "Ice",      category: "Special",  power: 65,  accuracy: 100 },
+        "Freeze-Dry":    { type: "Ice",      category: "Special",  power: 70,  accuracy: 100 },
+        "Ice Punch":     { type: "Ice",      category: "Physical", power: 75,  accuracy: 100, effect: { status: "FRZ", chance: 10 } },
+        "Icicle Crash":  { type: "Ice",      category: "Physical", power: 85,  accuracy: 90 },
+        "Ice Beam":      { type: "Ice",      category: "Special",  power: 90,  accuracy: 100, effect: { status: "FRZ", chance: 10 } },
+        "Blizzard":      { type: "Ice",      category: "Special",  power: 110, accuracy: 70,  effect: { status: "FRZ", chance: 10 } },
+
+        // ── Ground ──────────────────────────────────────────────────────
+        "Mud-Slap":      { type: "Ground",   category: "Special",  power: 20,  accuracy: 100 },
+        "Bulldoze":      { type: "Ground",   category: "Physical", power: 60,  accuracy: 100 },
+        "Dig":           { type: "Ground",   category: "Physical", power: 80,  accuracy: 100 },
+        "Earth Power":   { type: "Ground",   category: "Special",  power: 90,  accuracy: 100 },
+        "High Horsepower":{ type: "Ground",  category: "Physical", power: 95,  accuracy: 95 },
+        "Earthquake":    { type: "Ground",   category: "Physical", power: 100, accuracy: 100 },
+
+        // ── Flying ──────────────────────────────────────────────────────
+        "Peck":          { type: "Flying",   category: "Physical", power: 35,  accuracy: 100 },
+        "Acrobatics":    { type: "Flying",   category: "Physical", power: 55,  accuracy: 100 },
+        "Aerial Ace":    { type: "Flying",   category: "Physical", power: 60,  accuracy: 100 },
+        "Air Slash":     { type: "Flying",   category: "Special",  power: 75,  accuracy: 95 },
+        "Drill Peck":    { type: "Flying",   category: "Physical", power: 80,  accuracy: 100 },
+        "Hurricane":     { type: "Flying",   category: "Special",  power: 110, accuracy: 70,  effect: { status: "CNF", chance: 30 } },
+        "Brave Bird":    { type: "Flying",   category: "Physical", power: 120, accuracy: 100 },
+
+        // ── Psychic ─────────────────────────────────────────────────────
+        "Confusion":     { type: "Psychic",  category: "Special",  power: 50,  accuracy: 100, effect: { status: "CNF", chance: 10 } },
+        "Psycho Cut":    { type: "Psychic",  category: "Physical", power: 70,  accuracy: 100 },
+        "Psyshock":      { type: "Psychic",  category: "Special",  power: 80,  accuracy: 100 },
+        "Zen Headbutt":  { type: "Psychic",  category: "Physical", power: 80,  accuracy: 90 },
+        "Extrasensory":  { type: "Psychic",  category: "Special",  power: 80,  accuracy: 100 },
+        "Psychic":       { type: "Psychic",  category: "Special",  power: 90,  accuracy: 100 },
+        "Hypnosis":      { type: "Psychic",  category: "Status",   power: 0,   accuracy: 60,  effect: { status: "SLP", chance: 100 } }
     };
 
     // ─────────────────────────────────────────────────────────────────────
